@@ -1,0 +1,11 @@
+{
+  "name": "materialhub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "cd app && npx expo start",
+    "android": "cd app && npx expo start --android",
+    "ios": "cd app && npx expo start --ios",
+    "web": "cd app && npx expo start --web"
+  }
+}
