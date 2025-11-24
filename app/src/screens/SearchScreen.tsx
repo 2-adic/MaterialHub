@@ -7,7 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
+import PlatformPicker from "../components/PlatformPicker";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { SearchFilter, MaterialProperties, RootStackParamList } from "../types";
@@ -104,17 +104,17 @@ export default function SearchScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Material Type</Text>
           <View style={styles.pickerContainer}>
-            <Picker
+            <PlatformPicker
               selectedValue={materialType}
               onValueChange={(value) => setMaterialType(value)}
             >
-              <Picker.Item label="All Types" value="all" />
-              <Picker.Item label="Elements" value="element" />
-              <Picker.Item label="Compounds" value="compound" />
-              <Picker.Item label="Alloys" value="alloy" />
-              <Picker.Item label="Allotropes" value="allotrope" />
-              <Picker.Item label="Mixtures" value="mixture" />
-            </Picker>
+              <PlatformPicker.Item label="All Types" value="all" />
+              <PlatformPicker.Item label="Elements" value="element" />
+              <PlatformPicker.Item label="Compounds" value="compound" />
+              <PlatformPicker.Item label="Alloys" value="alloy" />
+              <PlatformPicker.Item label="Allotropes" value="allotrope" />
+              <PlatformPicker.Item label="Mixtures" value="mixture" />
+            </PlatformPicker>
           </View>
         </View>
 
@@ -138,14 +138,14 @@ export default function SearchScreen() {
               </View>
 
               <View style={styles.pickerContainer}>
-                <Picker
+                <PlatformPicker
                   selectedValue={filter.property}
                   onValueChange={(value: keyof MaterialProperties) =>
                     updateFilter(index, { property: value })
                   }
                 >
                   {availableProperties.map((prop) => (
-                    <Picker.Item
+                    <PlatformPicker.Item
                       key={prop}
                       label={String(prop)
                         .replace(/([A-Z])/g, " $1")
@@ -158,7 +158,7 @@ export default function SearchScreen() {
                       value={prop}
                     />
                   ))}
-                </Picker>
+                </PlatformPicker>
               </View>
 
               <View style={styles.rangeSection}>
