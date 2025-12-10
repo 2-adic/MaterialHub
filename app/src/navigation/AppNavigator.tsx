@@ -75,6 +75,30 @@ function PeriodicTableStack() {
   );
 }
 
+function FavoritesStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#1a1a2e" },
+        headerTintColor: "#fff",
+        headerTitleStyle: { fontWeight: "bold" },
+        headerBackTitle: "Back",
+      }}
+    >
+      <Stack.Screen
+        name="Favorites"
+        component={FavoritesScreen}
+        options={{ title: "Favorites" }}
+      />
+      <Stack.Screen
+        name="MaterialDetail"
+        component={MaterialDetailScreen}
+        options={{ title: "Material Details" }}
+      />
+    </Stack.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -91,18 +115,13 @@ export default function AppNavigator() {
       >
         <Tab.Screen
           name="FavoritesTab"
-          component={FavoritesScreen}
+          component={FavoritesStack}
           options={{
             title: "Favorites",
             tabBarLabel: "Favorites",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="star" size={size} color={color} />
             ),
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: "#1a1a2e",
-            },
-            headerTintColor: "#fff",
           }}
         />
         <Tab.Screen

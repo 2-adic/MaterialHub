@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import {
   getDependencyDescription,
 } from "../utils/propertyDependencies";
 import PhaseChangeChart from "../components/PhaseChangeChart";
+import { FavoritesContext } from "../context/FavoritesContext";
+import { Ionicons } from "@expo/vector-icons";
 
 type MaterialDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -291,6 +293,7 @@ export default function MaterialDetailScreen({ route }: Props) {
   const { material } = route.params;
   const categories = getCategories(material);
   const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const { isFavorite, toggleFavorite } = useContext(FavoritesContext);
 
   const renderProperty = (key: string, isLast: boolean) => {
     let value: any;
@@ -389,6 +392,20 @@ export default function MaterialDetailScreen({ route }: Props) {
               <View style={styles.infoIconContainer}>
                 <Text style={styles.infoIcon}>i</Text>
               </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.favButton}
+              onPress={() => toggleFavorite(material.id)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isFavorite(material.id) ? "Remove favorite" : "Add favorite"
+              }
+            >
+              <Ionicons
+                name={isFavorite(material.id) ? "star" : "star-outline"}
+                size={24}
+                color={isFavorite(material.id) ? "#ffd54f" : "#aaa"}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -491,6 +508,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
     right: 8,
+    padding: 4,
+  },
+  favButton: {
+    position: "absolute",
+    top: 0,
+    left: 8,
     padding: 4,
   },
   infoIconContainer: {
