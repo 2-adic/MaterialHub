@@ -1397,6 +1397,9 @@ export const compounds: Material[] = [
       bulkModulus: 2.2,
       speedOfSound: 1482,
 
+      // Charts and Diagrams
+      hasPhaseChart: true,
+
       // Safety Properties
       hazards:
         "Generally safe; steam can cause burns. Large quantities can cause drowning.",

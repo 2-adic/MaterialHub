@@ -14,6 +14,7 @@ import {
   getDependencyColor,
   getDependencyDescription,
 } from "../utils/propertyDependencies";
+import PhaseChangeChart from "../components/PhaseChangeChart";
 
 type MaterialDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -331,17 +332,19 @@ export default function MaterialDetailScreen({ route }: Props) {
 
   const renderCategory = (category: PropertyCategory) => {
     if (category.title === "Charts") {
-      return (
-        <View key={category.title} style={styles.section}>
-          <Text style={styles.sectionTitle}>{category.title}</Text>
-          <View style={styles.wipContainer}>
-            <Text style={styles.wipText}>🚧 Work in Progress 🚧</Text>
-            <Text style={styles.wipSubtext}>
-              Visual charts and graphs coming soon
-            </Text>
+      // Only show Charts section if the material has a phase chart
+      if (material.properties.hasPhaseChart) {
+        return (
+          <View key={category.title} style={styles.section}>
+            <Text style={styles.sectionTitle}>Phase Diagram</Text>
+            <View style={styles.chartContainer}>
+              <PhaseChangeChart />
+            </View>
           </View>
-        </View>
-      );
+        );
+      }
+      // Don't render Charts section if there are no charts to show
+      return null;
     }
 
     const propertiesWithValues = category.properties.filter((prop) => {
@@ -630,5 +633,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+  },
+  chartContainer: {
+    marginTop: 10,
+    backgroundColor: "#1a1a2e",
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#2a2a3e",
+    alignItems: "center",
+  },
+  chartDescription: {
+    fontSize: 14,
+    color: "#aaa",
+    marginBottom: 10,
+    lineHeight: 20,
+    fontStyle: "italic",
   },
 });

@@ -101,6 +101,9 @@ export interface MaterialProperties {
   tradeNames?: string; // common trade names
   crystalStructure?: string; // e.g., "FCC", "BCC", "HCP"
 
+  // Charts and Diagrams
+  hasPhaseChart?: boolean; // Whether to show phase change chart
+
   [key: string]: any; // Allow additional properties
 }
 
