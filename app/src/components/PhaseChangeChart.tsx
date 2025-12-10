@@ -517,15 +517,6 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
               Critical Point
             </SvgText>
 
-            {/* Normal conditions point (0°C, 1 atm) */}
-            <Circle
-              cx={tempToX(0)}
-              cy={pressureToY(1)}
-              r="4"
-              fill="#666"
-              opacity={0.7}
-            />
-
             {/* Labels */}
             <SvgText
               x={width / 2}
