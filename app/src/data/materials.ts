@@ -80,19 +80,50 @@ export const periodicTableData: Material[] = [
     atomicNumber: 6,
     category: "nonmetal",
     properties: {
-      meltingPoint: 3550,
+      // Basic Properties
+      meltingPoint: 3642,
       boilingPoint: 4027,
-      electronegativity: 2.55,
-      atomicMass: 12.011,
       state: "solid",
       color: "varies",
-      ionizationEnergy: 1086,
+      odor: "odorless",
+
+      // Thermal Properties
+      thermalConductivity: 140,
+      specificHeatCapacity: 0.709,
+      heatOfFusion: 105,
+      heatOfVaporization: 715,
+      thermalExpansionCoefficient: 7.1,
+
+      // Electrical Properties
+      electricalConductivity: 0.13e6,
+
+      // Mechanical Properties
+      bulkModulus: 33,
+
+      // Chemical Properties
+      polarity: "nonpolar",
+      molecularMass: 12.011,
+      casNumber: "7440-44-0",
+
+      // Atomic Properties
+      electronegativity: 2.55,
+      atomicMass: 12.011,
+      ionizationEnergy: 1086.5,
       block: "p",
       electronShell: "2, 4",
       valenceElectrons: 4,
+
+      // Safety Properties
+      hazards:
+        "Generally non-toxic in bulk form. Fine carbon dust may be combustible. Nanoforms (nanotubes, fullerenes) require special handling.",
+      nfpaRating: "1/1/0",
+      flammability:
+        "Graphitic forms can burn at high temperatures; diamond is combustible above 800°C in oxygen. Carbon dust is combustible.",
+      reactivity:
+        "Chemically stable at room temperature. Reacts with strong oxidizers at elevated temperatures.",
     },
     description:
-      "Basis of organic chemistry and life, exists in multiple allotropes.",
+      "Basis of organic chemistry and life, exists in multiple allotropes including diamond, graphite, fullerenes, and nanotubes.",
   },
   {
     id: "O",
@@ -1324,15 +1355,50 @@ export const compounds: Material[] = [
     symbol: "H₂O",
     type: "compound",
     properties: {
-      density: 1.0,
+      // Basic Properties
+      density: 0.997,
       meltingPoint: 0,
       boilingPoint: 100,
-      thermalConductivity: 0.6,
-      electricalConductivity: 5.5e-6,
       state: "liquid",
       color: "colorless",
+      odor: "odorless",
+
+      // Thermal Properties
+      thermalConductivity: 0.6065,
+      specificHeatCapacity: 4.186,
+      heatOfFusion: 333.6,
+      heatOfVaporization: 2257,
+      thermalExpansionCoefficient: 207,
+
+      // Electrical/Chemical Properties
+      electricalConductivity: 5.5e-6,
+
+      // Optical Properties
+      refractiveIndex: 1.333,
+
+      // Fluid Properties
+      viscosity: 1.002,
+      surfaceTension: 72.8,
+
+      // Chemical Properties
+      pH: 7,
+      polarity: "highly polar",
+      molecularMass: 18.015,
+      casNumber: "7732-18-5",
+
+      // Mechanical Properties
+      bulkModulus: 2.2,
+      speedOfSound: 1482,
+
+      // Safety Properties
+      hazards:
+        "Generally safe; steam can cause burns. Large quantities can cause drowning.",
+      nfpaRating: "0/0/0",
+      flammability:
+        "Not flammable; can be electrolyzed to produce flammable hydrogen and oxygen gases",
     },
-    description: "Essential for life, universal solvent.",
+    description:
+      "Essential for life, universal solvent. Highest specific heat capacity among common substances, unusual property of expanding when frozen.",
   },
   {
     id: "NaCl",
@@ -1487,15 +1553,73 @@ export const alloys: Material[] = [
     name: "Brass",
     type: "alloy",
     properties: {
-      density: 8.4,
-      meltingPoint: 900,
-      thermalConductivity: 120,
-      electricalConductivity: 15e6,
-      hardness: 3,
+      // Basic Properties
+      density: 8.5,
+      meltingPoint: 920,
+      boilingPoint: 2595,
       state: "solid",
       color: "gold",
+      odor: "odorless",
+
+      // Thermal Properties
+      thermalConductivity: 120,
+      specificHeatCapacity: 0.38,
+      heatOfFusion: 205,
+      heatOfVaporization: 4700,
+      thermalExpansionCoefficient: 20.5,
+      thermalDiffusivity: 37,
+      solidusTemperature: 900,
+      liquidusTemperature: 940,
+
+      // Electrical Properties
+      electricalConductivity: 15e6,
+      resistivity: 67,
+      temperatureCoefficientResistance: 1.5,
+
+      // Mechanical Properties
+      hardness: 3,
+      bulkModulus: 112,
+      speedOfSound: 3480,
+      youngsModulus: 103,
+      shearModulus: 37.5,
+      poissonsRatio: 0.33,
+      tensileStrength: 375,
+      tensileStrengthRange: "200-550 MPa",
+      yieldStrength: 200,
+      yieldStrengthRange: "100-300 MPa",
+      elongation: 37.5,
+      elongationRange: "25-50%",
+
+      // Optical Properties
+      refractiveIndex: 0.37,
+      reflectivity: 60,
+
+      // Chemical Properties
+      polarity: "metallic",
+      corrosionResistance:
+        "Good, but prone to dezincification in certain environments",
+      reactivity:
+        "Reacts with nitric acid; forms oxide/carbonate layer (tarnish)",
+      tarnishBehavior: "Forms greenish patina (copper carbonate/oxide)",
+      hazards:
+        "Not hazardous in solid form; brass dust/fumes can cause metal fume fever",
+      nfpaRating: "0/1/0",
+      flammability:
+        "Not flammable as bulk solid; dust can ignite under certain conditions",
+      casNumber: "12597-69-2",
+
+      // Composition
+      composition: "Copper-zinc alloy",
+      copperContent: 67,
+      zincContent: 33,
+
+      // Identity
+      unsDesignation: "C26000",
+      tradeNames: "Cartridge brass, Yellow brass",
+      crystalStructure: "FCC",
     },
-    description: "Copper-zinc alloy, used in musical instruments and fittings.",
+    description:
+      "Copper-zinc alloy (typically 67% Cu, 33% Zn), used in musical instruments, fittings, and ammunition. Properties vary by composition. Good corrosion resistance but can dezincify in certain environments.",
   },
   {
     id: "bronze",
@@ -1537,17 +1661,46 @@ export const allotropes: Material[] = [
     symbol: "C",
     type: "allotrope",
     properties: {
-      density: 3.51,
-      meltingPoint: 3550,
+      // Basic Properties
+      density: 3.515,
+      meltingPoint: 3642,
       boilingPoint: 4827,
-      thermalConductivity: 2200,
-      electricalConductivity: 1e-13,
-      hardness: 10,
       state: "solid",
       color: "transparent/colorless",
+      odor: "odorless",
+
+      // Thermal Properties
+      thermalConductivity: 2200,
+      specificHeatCapacity: 0.509,
+      thermalExpansionCoefficient: 1.1,
+
+      // Electrical Properties
+      electricalConductivity: 1e-13,
+
+      // Mechanical Properties
+      hardness: 10,
+      bulkModulus: 442,
+      speedOfSound: 12000,
+
+      // Optical Properties
+      refractiveIndex: 2.417,
+
+      // Chemical Properties
+      polarity: "nonpolar",
+      molecularMass: 12.011,
+      casNumber: "7782-40-3",
+
+      // Safety Properties
+      hazards:
+        "Non-toxic and chemically inert under normal conditions. Diamond dust may cause respiratory irritation if inhaled.",
+      nfpaRating: "1/1/0",
+      flammability:
+        "Combustible in pure oxygen above 800°C; burns to form CO₂. Stable in air at room temperature.",
+      reactivity:
+        "Extremely stable and chemically inert at room temperature. Does not react with acids or bases.",
     },
     description:
-      "Hardest naturally occurring material, carbon allotrope with tetrahedral structure.",
+      "Hardest naturally occurring material, carbon allotrope with tetrahedral cubic structure. Exceptional thermal conductor with very high refractive index (2.417).",
   },
   {
     id: "graphite",

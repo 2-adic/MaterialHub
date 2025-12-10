@@ -41,7 +41,18 @@ function getCategories(material: Material): PropertyCategory[] {
   if (type === "compound" || type === "allotrope" || type === "alloy") {
     categories.push({
       title: "Physical Properties",
-      properties: ["state", "color", "density", "meltingPoint", "boilingPoint"],
+      properties: [
+        "state",
+        "color",
+        "odor",
+        "density",
+        "meltingPoint",
+        "boilingPoint",
+        "refractiveIndex",
+        "reflectivity",
+        "viscosity",
+        "surfaceTension",
+      ],
     });
   }
 
@@ -51,9 +62,19 @@ function getCategories(material: Material): PropertyCategory[] {
       title: "Mechanical Properties",
       properties: [
         "hardness",
+        "bulkModulus",
+        "speedOfSound",
+        "youngsModulus",
+        "shearModulus",
+        "poissonsRatio",
         "tensileStrength",
+        "tensileStrengthRange",
         "yieldStrength",
-        "elasticModulus",
+        "yieldStrengthRange",
+        "elongation",
+        "elongationRange",
+        "modulusOfResilience",
+        "fatigueLimit",
       ],
     });
   }
@@ -62,7 +83,38 @@ function getCategories(material: Material): PropertyCategory[] {
   if (type === "compound" || type === "allotrope" || type === "alloy") {
     categories.push({
       title: "Thermal Properties",
-      properties: ["thermalConductivity", "thermalExpansion", "specificHeat"],
+      properties: [
+        "thermalConductivity",
+        "specificHeatCapacity",
+        "heatOfFusion",
+        "heatOfVaporization",
+        "thermalExpansionCoefficient",
+        "thermalDiffusivity",
+        "solidusTemperature",
+        "liquidusTemperature",
+      ],
+    });
+  }
+
+  // Chemical Properties (for compound/allotrope)
+  if (type === "compound" || type === "allotrope" || type === "alloy") {
+    categories.push({
+      title: "Chemical Properties",
+      properties: [
+        "pH",
+        "polarity",
+        "molecularMass",
+        "composition",
+        "copperContent",
+        "zincContent",
+        "tinContent",
+        "leadContent",
+        "aluminumContent",
+        "casNumber",
+        "unsDesignation",
+        "tradeNames",
+        "crystalStructure",
+      ],
     });
   }
 
@@ -75,7 +127,14 @@ function getCategories(material: Material): PropertyCategory[] {
   // Safety (for all)
   categories.push({
     title: "Safety",
-    properties: ["toxicity", "hazards", "handling", "storage"],
+    properties: [
+      "hazards",
+      "nfpaRating",
+      "flammability",
+      "corrosionResistance",
+      "reactivity",
+      "tarnishBehavior",
+    ],
   });
 
   // Charts (for all)
@@ -88,6 +147,9 @@ function getCategories(material: Material): PropertyCategory[] {
 }
 
 function formatPropertyName(key: string): string {
+  // Special case for pH
+  if (key === "pH") return "pH";
+
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase())
@@ -98,17 +160,93 @@ function formatPropertyValue(key: string, value: any): string {
   if (value === undefined || value === null) return "N/A";
 
   switch (key) {
+    // Basic Properties
     case "density":
       return `${value} g/cm³`;
     case "meltingPoint":
     case "boilingPoint":
-      return `${value}°C`;
+      return `${value} °C (at 1 atm)`;
+
+    // Thermal Properties
     case "thermalConductivity":
       return `${value} W/(m·K)`;
+    case "specificHeatCapacity":
+      return `${value} J/(g·°C)`;
+    case "heatOfFusion":
+      return `${value} kJ/kg`;
+    case "heatOfVaporization":
+      return `${value} kJ/kg`;
+    case "thermalExpansionCoefficient":
+      return `${value} × 10⁻⁶/°C`;
+    case "thermalDiffusivity":
+      return `${value} mm²/s`;
+    case "solidusTemperature":
+    case "liquidusTemperature":
+      return `${value} °C`;
+
+    // Electrical Properties
     case "electricalConductivity":
       return `${value} S/m`;
+    case "resistivity":
+      return `${value} nΩ·m`;
+    case "temperatureCoefficientResistance":
+      return `${value} × 10⁻³/°C`;
+    case "seebeckCoefficient":
+      return `${value} μV/K`;
+
+    // Mechanical Properties
     case "hardness":
       return `${value} (Mohs)`;
+    case "bulkModulus":
+      return `${value} GPa`;
+    case "speedOfSound":
+      return `${value} m/s`;
+    case "youngsModulus":
+      return `${value} GPa`;
+    case "shearModulus":
+      return `${value} GPa`;
+    case "poissonsRatio":
+      return `${value}`;
+    case "tensileStrength":
+      return `${value} MPa`;
+    case "yieldStrength":
+      return `${value} MPa`;
+    case "elongation":
+      return `${value}%`;
+    case "modulusOfResilience":
+      return `${value} MPa`;
+    case "fatigueLimit":
+      return `${value} MPa`;
+    case "tensileStrengthRange":
+    case "yieldStrengthRange":
+    case "elongationRange":
+      return String(value);
+
+    // Optical Properties
+    case "refractiveIndex":
+      return `${value}`;
+    case "reflectivity":
+      return `${value}%`;
+    case "absorptionCoefficient":
+      return `${value} cm⁻¹`;
+
+    // Fluid Properties
+    case "viscosity":
+      return `${value} mPa·s`;
+    case "surfaceTension":
+      return `${value} mN/m`;
+
+    // Chemical Properties
+    case "molecularMass":
+      return `${value} g/mol`;
+    case "copperContent":
+    case "zincContent":
+    case "tinContent":
+    case "leadContent":
+    case "aluminumContent":
+      return `${value}%`;
+
+    // Atomic Properties
     case "ionizationEnergy":
       return `${value} kJ/mol`;
     case "atomicMass":
@@ -116,6 +254,7 @@ function formatPropertyValue(key: string, value: any): string {
     case "block":
       // Don't capitalize block values (s, p, d, f)
       return String(value);
+
     default:
       const stringValue = String(value);
       // Don't capitalize if it starts with a number
@@ -164,20 +303,6 @@ export default function MaterialDetailScreen({ route }: Props) {
             <Text style={styles.wipText}>🚧 Work in Progress 🚧</Text>
             <Text style={styles.wipSubtext}>
               Visual charts and graphs coming soon
-            </Text>
-          </View>
-        </View>
-      );
-    }
-
-    if (category.title === "Safety") {
-      return (
-        <View key={category.title} style={styles.section}>
-          <Text style={styles.sectionTitle}>{category.title}</Text>
-          <View style={styles.wipContainer}>
-            <Text style={styles.wipText}>🚧 Work in Progress 🚧</Text>
-            <Text style={styles.wipSubtext}>
-              Safety information coming soon
             </Text>
           </View>
         </View>

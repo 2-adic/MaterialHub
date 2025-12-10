@@ -25,12 +25,27 @@ export default function SearchScreen() {
   const [weightTexts, setWeightTexts] = useState<{ [key: number]: string }>({});
 
   const availableProperties: (keyof MaterialProperties)[] = [
+    "atomicMass",
     "boilingPoint",
+    "bulkModulus",
     "density",
     "electricalConductivity",
+    "electronegativity",
     "hardness",
+    "heatOfFusion",
+    "heatOfVaporization",
+    "ionizationEnergy",
     "meltingPoint",
+    "molecularMass",
+    "pH",
+    "refractiveIndex",
+    "specificHeatCapacity",
+    "speedOfSound",
+    "surfaceTension",
     "thermalConductivity",
+    "thermalExpansionCoefficient",
+    "valenceElectrons",
+    "viscosity",
   ];
 
   const addFilter = () => {
@@ -143,20 +158,29 @@ export default function SearchScreen() {
                     updateFilter(index, { property: value })
                   }
                 >
-                  {availableProperties.map((prop) => (
-                    <PlatformPicker.Item
-                      key={prop}
-                      label={String(prop)
-                        .replace(/([A-Z])/g, " $1")
-                        .trim()
-                        .split(" ")
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" ")}
-                      value={prop}
-                    />
-                  ))}
+                  {availableProperties.map((prop) => {
+                    // Special handling for pH
+                    let label =
+                      prop === "pH"
+                        ? "pH"
+                        : String(prop)
+                            .replace(/([A-Z])/g, " $1")
+                            .trim()
+                            .split(" ")
+                            .map(
+                              (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                            )
+                            .join(" ");
+
+                    return (
+                      <PlatformPicker.Item
+                        key={prop}
+                        label={label}
+                        value={prop}
+                      />
+                    );
+                  })}
                 </PlatformPicker>
               </View>
 
