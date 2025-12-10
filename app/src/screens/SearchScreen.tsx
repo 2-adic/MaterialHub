@@ -113,7 +113,6 @@ export default function SearchScreen() {
               <PlatformPicker.Item label="Compounds" value="compound" />
               <PlatformPicker.Item label="Alloys" value="alloy" />
               <PlatformPicker.Item label="Allotropes" value="allotrope" />
-              <PlatformPicker.Item label="Mixtures" value="mixture" />
             </PlatformPicker>
           </View>
         </View>

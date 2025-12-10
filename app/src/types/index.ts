@@ -2,7 +2,7 @@ export interface Material {
   id: string;
   name: string;
   symbol?: string;
-  type: "element" | "compound" | "mixture" | "alloy" | "allotrope";
+  type: "element" | "compound" | "alloy" | "allotrope";
   atomicNumber?: number;
   properties: MaterialProperties;
   category?: string;
