@@ -75,6 +75,14 @@ export interface MaterialProperties {
   electronegativity?: number;
   atomicMass?: number; // u
   ionizationEnergy?: number; // kJ/mol
+  electronAffinity?: number; // eV
+  atomicRadius?: number; // pm (picometers)
+  covalentRadius?: number; // pm
+  ionicRadius?: number; // pm
+  oxidationStates?: string; // e.g., "−4, −3, −2, −1, 0, +1, +2, +3, +4"
+  electronConfiguration?: string; // e.g., "1s2 2s2 2p2"
+  atomicVolume?: number; // cm³/mol
+  magneticOrdering?: string; // e.g., "diamagnetic", "paramagnetic", "ferromagnetic"
   block?: "s" | "p" | "d" | "f";
   electronShell?: string; // e.g., "2, 8, 18, 32, 18, 6"
   valenceElectrons?: number;

@@ -26,10 +26,14 @@ export default function SearchScreen() {
 
   const availableProperties: (keyof MaterialProperties)[] = [
     "atomicMass",
+    "atomicRadius",
+    "atomicVolume",
     "boilingPoint",
     "bulkModulus",
+    "covalentRadius",
     "density",
     "electricalConductivity",
+    "electronAffinity",
     "electronegativity",
     "hardness",
     "heatOfFusion",
