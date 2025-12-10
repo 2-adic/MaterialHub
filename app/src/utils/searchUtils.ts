@@ -113,14 +113,27 @@ export const searchMaterials = (
 
 export const getPropertyDisplayName = (property: string): string => {
   const displayNames: { [key: string]: string } = {
-    density: "Density (g/cm³)",
-    meltingPoint: "Melting Point (°C)",
+    atomicMass: "Atomic Mass (u)",
     boilingPoint: "Boiling Point (°C)",
-    thermalConductivity: "Thermal Conductivity (W/(m·K))",
+    bulkModulus: "Bulk Modulus (GPa)",
+    density: "Density (g/cm³)",
     electricalConductivity: "Electrical Conductivity (S/m)",
-    hardness: "Hardness (Mohs)",
     electronegativity: "Electronegativity",
-    atomicMass: "Atomic Mass",
+    hardness: "Hardness (Mohs)",
+    heatOfFusion: "Heat of Fusion (kJ/kg)",
+    heatOfVaporization: "Heat of Vaporization (kJ/kg)",
+    ionizationEnergy: "Ionization Energy (kJ/mol)",
+    meltingPoint: "Melting Point (°C)",
+    molecularMass: "Molecular Mass (g/mol)",
+    pH: "pH",
+    refractiveIndex: "Refractive Index",
+    specificHeatCapacity: "Specific Heat Capacity (J/(g·°C))",
+    speedOfSound: "Speed of Sound (m/s)",
+    surfaceTension: "Surface Tension (mN/m)",
+    thermalConductivity: "Thermal Conductivity (W/(m·K))",
+    thermalExpansionCoefficient: "Thermal Expansion Coefficient (10⁻⁶/°C)",
+    valenceElectrons: "Valence Electrons",
+    viscosity: "Viscosity (mPa·s)",
   };
   return displayNames[property] || property;
 };
@@ -129,6 +142,18 @@ export const formatPropertyValue = (value: any, property: string): string => {
   if (typeof value === "number") {
     if (property === "electricalConductivity" && value > 1000) {
       return (value / 1e6).toFixed(2) + " × 10⁶ S/m";
+    }
+    if (property === "refractiveIndex" || property === "pH") {
+      return value.toFixed(3);
+    }
+    if (property === "viscosity" || property === "surfaceTension") {
+      return value.toFixed(2);
+    }
+    if (property === "specificHeatCapacity") {
+      return value.toFixed(3);
+    }
+    if (property === "thermalExpansionCoefficient") {
+      return value.toFixed(1);
     }
     return value.toLocaleString();
   }

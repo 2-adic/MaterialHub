@@ -129,7 +129,6 @@ function getTypeColor(type: string): string {
     compound: "#e74c3c",
     alloy: "#f39c12",
     allotrope: "#2ecc71",
-    mixture: "#9b59b6",
   };
   return colors[type] || "#95a5a6";
 }

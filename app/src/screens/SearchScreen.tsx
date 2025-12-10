@@ -25,12 +25,31 @@ export default function SearchScreen() {
   const [weightTexts, setWeightTexts] = useState<{ [key: number]: string }>({});
 
   const availableProperties: (keyof MaterialProperties)[] = [
+    "atomicMass",
+    "atomicRadius",
+    "atomicVolume",
     "boilingPoint",
+    "bulkModulus",
+    "covalentRadius",
     "density",
     "electricalConductivity",
+    "electronAffinity",
+    "electronegativity",
     "hardness",
+    "heatOfFusion",
+    "heatOfVaporization",
+    "ionizationEnergy",
     "meltingPoint",
+    "molecularMass",
+    "pH",
+    "refractiveIndex",
+    "specificHeatCapacity",
+    "speedOfSound",
+    "surfaceTension",
     "thermalConductivity",
+    "thermalExpansionCoefficient",
+    "valenceElectrons",
+    "viscosity",
   ];
 
   const addFilter = () => {
@@ -113,7 +132,6 @@ export default function SearchScreen() {
               <PlatformPicker.Item label="Compounds" value="compound" />
               <PlatformPicker.Item label="Alloys" value="alloy" />
               <PlatformPicker.Item label="Allotropes" value="allotrope" />
-              <PlatformPicker.Item label="Mixtures" value="mixture" />
             </PlatformPicker>
           </View>
         </View>
@@ -144,20 +162,29 @@ export default function SearchScreen() {
                     updateFilter(index, { property: value })
                   }
                 >
-                  {availableProperties.map((prop) => (
-                    <PlatformPicker.Item
-                      key={prop}
-                      label={String(prop)
-                        .replace(/([A-Z])/g, " $1")
-                        .trim()
-                        .split(" ")
-                        .map(
-                          (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" ")}
-                      value={prop}
-                    />
-                  ))}
+                  {availableProperties.map((prop) => {
+                    // Special handling for pH
+                    let label =
+                      prop === "pH"
+                        ? "pH"
+                        : String(prop)
+                            .replace(/([A-Z])/g, " $1")
+                            .trim()
+                            .split(" ")
+                            .map(
+                              (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                            )
+                            .join(" ");
+
+                    return (
+                      <PlatformPicker.Item
+                        key={prop}
+                        label={label}
+                        value={prop}
+                      />
+                    );
+                  })}
                 </PlatformPicker>
               </View>
 

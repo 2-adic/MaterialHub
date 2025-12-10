@@ -2,7 +2,7 @@
 
 ### About:
 
-MaterialHub is an easy-to-use mobile app for searching and exploring various elements, compounds, mixtures, and more. It supports advanced, multi-criteria filtering with configurable weights so users can prioritize and combine multiple material properties in a single search.
+MaterialHub is an easy-to-use mobile app for searching and exploring various elements, compounds, and more. It supports advanced, multi-criteria filtering with configurable weights so users can prioritize and combine multiple material properties in a single search.
 
 ### Info:
 
@@ -14,7 +14,7 @@ This project was collaboratively developed by a team of two for a User Experienc
 
 ### Search for Materials:
 
-Search through our comprehensive database of elements, compounds, and mixtures using advanced filtering options.
+Search through our comprehensive database of elements, compounds, alloys, and allotropes using advanced filtering options.
 
 ### Periodic Table:
 
@@ -44,6 +44,7 @@ Favorite a material to access it quickly later.
    - [Android Play Store](https://play.google.com/store/apps/details?id=host.exp.exponent)
 
 3. **Install dependencies**
+
    ```
    npm install --prefix app
    ```

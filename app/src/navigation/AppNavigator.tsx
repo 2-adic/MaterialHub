@@ -25,6 +25,7 @@ function SearchStack() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        headerBackTitle: "Back",
       }}
     >
       <Stack.Screen
@@ -57,6 +58,7 @@ function PeriodicTableStack() {
         headerTitleStyle: {
           fontWeight: "bold",
         },
+        headerBackTitle: "Back",
       }}
     >
       <Stack.Screen
