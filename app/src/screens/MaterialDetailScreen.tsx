@@ -1,7 +1,19 @@
-import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+} from "react-native";
 import { RouteProp } from "@react-navigation/native";
 import { RootStackParamList, Material } from "../types";
+import {
+  getPropertyDependencyType,
+  getDependencyColor,
+  getDependencyDescription,
+} from "../utils/propertyDependencies";
 
 type MaterialDetailScreenRouteProp = RouteProp<
   RootStackParamList,
@@ -269,6 +281,7 @@ function formatPropertyValue(key: string, value: any): string {
 export default function MaterialDetailScreen({ route }: Props) {
   const { material } = route.params;
   const categories = getCategories(material);
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
 
   const renderProperty = (key: string, isLast: boolean) => {
     let value: any;
@@ -281,12 +294,26 @@ export default function MaterialDetailScreen({ route }: Props) {
 
     if (value === undefined || value === null) return null;
 
+    const dependencyType = getPropertyDependencyType(key);
+    const showIndicator = dependencyType !== "none";
+    const indicatorColor = getDependencyColor(dependencyType);
+
     return (
       <View
         key={key}
         style={[styles.propertyRow, isLast && styles.propertyRowLast]}
       >
-        <Text style={styles.propertyLabel}>{formatPropertyName(key)}:</Text>
+        <View style={styles.propertyLabelContainer}>
+          {showIndicator && (
+            <View
+              style={[
+                styles.dependencyIndicator,
+                { backgroundColor: indicatorColor },
+              ]}
+            />
+          )}
+          <Text style={styles.propertyLabel}>{formatPropertyName(key)}:</Text>
+        </View>
         <Text style={styles.propertyValue}>
           {formatPropertyValue(key, value)}
         </Text>
@@ -337,14 +364,77 @@ export default function MaterialDetailScreen({ route }: Props) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.name}>{material.name}</Text>
-          {material.symbol && (
-            <Text style={styles.symbol}>{material.symbol}</Text>
-          )}
+          <View style={styles.headerContent}>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.name}>{material.name}</Text>
+              {material.symbol && (
+                <Text style={styles.symbol}>{material.symbol}</Text>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.infoButton}
+              onPress={() => setInfoModalVisible(true)}
+            >
+              <View style={styles.infoIconContainer}>
+                <Text style={styles.infoIcon}>i</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {categories.map((category) => renderCategory(category))}
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={infoModalVisible}
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setInfoModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Property Indicators</Text>
+            <Text style={styles.modalDescription}>
+              All listed values are based on standard temperature and pressure
+              (STP: 0°C, 1 atm). Some properties vary with temperature and/or
+              pressure. Color indicators show which conditions affect each
+              property:
+            </Text>
+
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#EF5350" }]}
+              />
+              <Text style={styles.legendText}>Temperature-dependent</Text>
+            </View>
+
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#42A5F5" }]}
+              />
+              <Text style={styles.legendText}>Pressure-dependent</Text>
+            </View>
+
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: "#AB47BC" }]}
+              />
+              <Text style={styles.legendText}>Both temperature & pressure</Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setInfoModalVisible(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -360,11 +450,18 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   header: {
-    alignItems: "center",
     paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#2a2a3e",
     marginBottom: 20,
+    position: "relative",
+  },
+  headerContent: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTextContainer: {
+    alignItems: "center",
   },
   name: {
     fontSize: 32,
@@ -378,6 +475,27 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#4a90e2",
     textAlign: "center",
+  },
+  infoButton: {
+    position: "absolute",
+    top: 0,
+    right: 8,
+    padding: 4,
+  },
+  infoIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#4a90e2",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#5fa3f5",
+  },
+  infoIcon: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
   },
   section: {
     marginBottom: 30,
@@ -398,12 +516,24 @@ const styles = StyleSheet.create({
   propertyRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: "#2a2a3e",
   },
   propertyRowLast: {
     borderBottomWidth: 0,
+  },
+  propertyLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  dependencyIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
   },
   propertyLabel: {
     fontSize: 14,
@@ -436,5 +566,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#aaa",
     textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#1a1a2e",
+    borderRadius: 16,
+    padding: 24,
+    width: "85%",
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: "#2a2a3e",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: "#aaa",
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  legendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  legendDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  legendText: {
+    fontSize: 16,
+    color: "#fff",
+  },
+  modalCloseButton: {
+    backgroundColor: "#4a90e2",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: "center",
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
