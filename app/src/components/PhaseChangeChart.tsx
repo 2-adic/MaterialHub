@@ -1,22 +1,64 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
-import Svg, {
-  Line,
-  Path,
-  Circle,
-  Text as SvgText,
-  G,
-  Rect,
-} from "react-native-svg";
-import {
-  GestureDetector,
-  Gesture,
-  GestureHandlerRootView,
-} from "react-native-gesture-handler";
+import Svg, { Path, Text as SvgText } from "react-native-svg";
+import Chart from "./Chart";
+import { MarkerProps } from "./Marker";
+
+type XY = { x: number; y: number };
+
+interface PhaseBoundary {
+  points: XY[];
+  strokeColor?: string;
+  strokeWidth?: number;
+  id: string; // Unique identifier for this boundary
+}
+
+interface PhaseArea {
+  points: XY[];
+  fillColor?: string;
+  opacity?: number;
+}
+
+interface PhaseRegion {
+  name: string;
+  fillColor: string;
+  opacity?: number;
+  // Define the region by specifying its temperature boundaries (left/right)
+  lowerBoundary?: string | "axis-min"; // ID of boundary or "axis-min" for xAxisMin (lowest temperature)
+  upperBoundary?: string | "axis-max"; // ID of boundary or "axis-max" for xAxisMax (highest temperature)
+}
+
+interface PhaseLabel {
+  label: string;
+  x: number;
+  y: number;
+  fontSize?: number;
+  color?: string;
+  fontWeight?: "normal" | "bold";
+  textAnchor?: "start" | "middle" | "end";
+}
 
 interface PhaseChangeChartProps {
   width?: number;
   height?: number;
+  xAxisMin: number;
+  xAxisMax: number;
+  yAxisMin: number;
+  yAxisMax: number;
+  xAxisTicks: number[];
+  yAxisTicks: number[];
+  xScale: (value: number) => number;
+  yScale: (value: number) => number;
+  xAxisLabel: string;
+  yAxisLabel: string;
+  touchValuePrecision?: number;
+  touchValueThreshold?: number;
+  markers?: MarkerProps[];
+  boundaries: PhaseBoundary[];
+  regions: PhaseRegion[];
+  labels: PhaseLabel[];
+  // Optional: If you still want to provide pre-calculated areas (backwards compatibility)
+  areas?: PhaseArea[];
 }
 
 interface PhaseInfo {
@@ -28,126 +70,27 @@ interface PhaseInfo {
 const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
   width = Dimensions.get("window").width - 40,
   height = 400,
+  xAxisMin,
+  xAxisMax,
+  yAxisMin,
+  yAxisMax,
+  xAxisTicks,
+  yAxisTicks,
+  xScale,
+  yScale,
+  xAxisLabel,
+  yAxisLabel,
+  touchValuePrecision,
+  touchValueThreshold,
+  markers,
+  boundaries,
+  regions,
+  labels,
+  areas: manualAreas,
 }) => {
   const [touchInfo, setTouchInfo] = useState<PhaseInfo | null>(null);
 
-  // Chart dimensions
-  const padding = { top: 40, right: 40, bottom: 60, left: 70 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-
-  // Water phase diagram key points (simplified)
-  // Temperature in Celsius, Pressure in atm
-  const triplePoint = { temp: 0.01, pressure: 0.006 };
-  const normalBoiling = { temp: 100, pressure: 1 };
-  const normalFreezing = { temp: 0, pressure: 1 };
-  const criticalPoint = { temp: 374, pressure: 218 };
-
-  // Scale ranges (Celsius)
-  const tempMin = -272; // ~1 K in Celsius
-  const tempMax = 1500; // 700 K in Celsius
-  const pressureMin = 0.001;
-  const pressureMax = 1500;
-  const linearTempBreak = 0; // 0°C - switch from linear to log here
-  const linearTempFraction = 0.2; // Use 20% of x-axis for low temps to 0°C
-
-  // Convert data coordinates to screen coordinates
-  const tempToX = (temp: number) => {
-    if (temp <= linearTempBreak) {
-      // Linear scale from 0K to 273.15K (0°C)
-      const linearWidth = chartWidth * linearTempFraction;
-      return (
-        ((temp - tempMin) / (linearTempBreak - tempMin)) * linearWidth +
-        padding.left
-      );
-    } else {
-      // Logarithmic scale from 273.15K to tempMax
-      const logStart = padding.left + chartWidth * linearTempFraction;
-      const logWidth = chartWidth * (1 - linearTempFraction);
-      const logTemp = Math.log10(temp - linearTempBreak + 1);
-      const logMax = Math.log10(tempMax - linearTempBreak + 1);
-      return (logTemp / logMax) * logWidth + logStart;
-    }
-  };
-
-  const pressureToY = (pressure: number) => {
-    const linearPressureBreak = 0.006; // Triple point pressure - switch from linear to log here
-    const linearPressureFraction = 0.2; // Use 20% of y-axis for low pressures to 0.006 atm
-
-    if (pressure <= linearPressureBreak) {
-      // Linear scale from pressureMin to 0.006 atm
-      const linearHeight = chartHeight * linearPressureFraction;
-      return (
-        height -
-        padding.bottom -
-        ((pressure - pressureMin) / (linearPressureBreak - pressureMin)) *
-          linearHeight
-      );
-    } else {
-      // Logarithmic scale from 0.006 atm to pressureMax
-      const logStart =
-        height - padding.bottom - chartHeight * linearPressureFraction;
-      const logHeight = chartHeight * (1 - linearPressureFraction);
-      const logPressure = Math.log10(pressure);
-      const logMin = Math.log10(linearPressureBreak);
-      const logMax = Math.log10(pressureMax);
-      return (
-        logStart - ((logPressure - logMin) / (logMax - logMin)) * logHeight
-      );
-    }
-  };
-
-  // Inverse functions
-  const xToTemp = (x: number) => {
-    const linearEnd = padding.left + chartWidth * linearTempFraction;
-    if (x <= linearEnd) {
-      // Linear region
-      const linearWidth = chartWidth * linearTempFraction;
-      const normalizedX = (x - padding.left) / linearWidth;
-      return normalizedX * (linearTempBreak - tempMin) + tempMin;
-    } else {
-      // Logarithmic region
-      const logWidth = chartWidth * (1 - linearTempFraction);
-      const normalizedX = (x - linearEnd) / logWidth;
-      const logMax = Math.log10(tempMax - linearTempBreak + 1);
-      const logTemp = normalizedX * logMax;
-      return Math.pow(10, logTemp) - 1 + linearTempBreak;
-    }
-  };
-
-  const yToPressure = (y: number) => {
-    const linearPressureBreak = 0.006;
-    const linearPressureFraction = 0.2;
-    const linearEnd =
-      height - padding.bottom - chartHeight * linearPressureFraction;
-
-    if (y >= linearEnd) {
-      // Linear region (bottom 20% of chart)
-      const linearHeight = chartHeight * linearPressureFraction;
-      const normalizedY = (height - padding.bottom - y) / linearHeight;
-      const calculatedPressure =
-        normalizedY * (linearPressureBreak - pressureMin) + pressureMin;
-      // Clamp to ensure we stay in linear range
-      return Math.max(
-        pressureMin,
-        Math.min(linearPressureBreak, calculatedPressure)
-      );
-    } else {
-      // Logarithmic region (top 80% of chart)
-      const logHeight = chartHeight * (1 - linearPressureFraction);
-      const normalizedY = (linearEnd - y) / logHeight;
-      const logMin = Math.log10(linearPressureBreak);
-      const logMax = Math.log10(pressureMax);
-      const logPressure = normalizedY * (logMax - logMin) + logMin;
-      const calculatedPressure = Math.pow(10, logPressure);
-      // Clamp to ensure we stay in log range
-      return Math.max(
-        linearPressureBreak,
-        Math.min(pressureMax, calculatedPressure)
-      );
-    }
-  };
-
+  // Pressure formatter
   const formatPressure = (pressure: number) => {
     if (pressure >= 1) {
       return pressure.toFixed(2);
@@ -158,474 +101,294 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
     return pressure.toFixed(4);
   };
 
-  // Determine phase based on temperature and pressure
-  const determinePhase = (temp: number, pressure: number): string => {
-    // Above critical point
-    if (temp >= criticalPoint.temp && pressure >= criticalPoint.pressure) {
-      return "Supercritical Fluid";
+  // Utility to build path from points
+  const buildPathFromPoints = (
+    pts: XY[],
+    toX: (v: number) => number,
+    toY: (v: number) => number
+  ) => {
+    if (!pts.length) return "";
+    let d = `M ${toX(pts[0].x)},${toY(pts[0].y)}`;
+    for (let i = 1; i < pts.length; i++) {
+      d += ` L ${toX(pts[i].x)},${toY(pts[i].y)}`;
     }
-
-    // Below triple point pressure - sublimation region
-    if (pressure < triplePoint.pressure) {
-      // Sublimation curve - exponential growth from low temp to triple point
-      const t = (temp - tempMin) / (triplePoint.temp - tempMin);
-      const sublimationPressure =
-        0.001 + Math.pow(Math.max(0, t), 2) * (triplePoint.pressure - 0.001);
-      return pressure < sublimationPressure ? "Gas" : "Solid";
-    }
-
-    // Melting curve (solid-liquid boundary) - slightly negative slope
-    // Goes from triple point upward with slight negative slope
-    const meltingTemp =
-      triplePoint.temp - 0.0075 * (pressure - triplePoint.pressure);
-
-    // Vaporization curve (liquid-gas boundary) - from triple point to critical point
-    // Using same exponential formula as the drawn curve
-    const t =
-      (pressure - triplePoint.pressure) /
-      (criticalPoint.pressure - triplePoint.pressure);
-    const vaporTemp =
-      triplePoint.temp +
-      Math.pow(t, 1 / 1.5) * (criticalPoint.temp - triplePoint.temp);
-
-    // Determine phase based on position relative to boundaries
-    if (temp < meltingTemp) {
-      return "Solid";
-    } else if (temp > vaporTemp) {
-      return "Gas";
-    } else {
-      return "Liquid";
-    }
+    return d;
   };
 
-  // Generate phase boundary paths
-  const generateSolidLiquidBoundary = () => {
-    let path = `M ${tempToX(triplePoint.temp)},${pressureToY(
-      triplePoint.pressure
-    )}`;
-    // Slightly negative slope to high pressure region - extend to top of chart
-    const points = [
-      { temp: triplePoint.temp, pressure: triplePoint.pressure },
-      { temp: -5, pressure: 50 },
-      { temp: -10, pressure: 100 },
-      { temp: -15, pressure: 200 },
-      { temp: -20, pressure: 400 },
-      { temp: -25, pressure: 600 },
-      { temp: -30, pressure: 800 },
-      { temp: -35, pressure: 1000 },
-      { temp: -40, pressure: 1200 },
-      { temp: -45, pressure: pressureMax },
-    ];
-    points.forEach((point) => {
-      path += ` L ${tempToX(point.temp)},${pressureToY(point.pressure)}`;
+  // Helper: Get temperature at a specific pressure from boundary points
+  // Uses linear interpolation between points
+  const getTemperatureAtPressure = (
+    points: XY[],
+    pressure: number
+  ): number | null => {
+    if (points.length === 0) return null;
+
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i + 1];
+
+      const minP = Math.min(p1.y, p2.y);
+      const maxP = Math.max(p1.y, p2.y);
+
+      if (pressure >= minP && pressure <= maxP) {
+        if (maxP === minP) {
+          // Horizontal segment at constant pressure
+          return p2.x;
+        }
+        const t = (pressure - p1.y) / (p2.y - p1.y);
+        return p1.x + t * (p2.x - p1.x);
+      }
+    }
+
+    return null;
+  };
+
+  const generatedAreas = useMemo(() => {
+    if (manualAreas && manualAreas.length > 0) {
+      return manualAreas;
+    }
+
+    const boundaryMap = new Map<string, PhaseBoundary>();
+    boundaries.forEach((b) => boundaryMap.set(b.id, b));
+
+    const result: PhaseArea[] = [];
+    const numSamples = 400;
+    const pressureRange = yAxisMax - yAxisMin;
+    const pressureStep = pressureRange / numSamples;
+    const pressureSamples = new Set<number>();
+
+    for (let i = 0; i <= numSamples; i++) {
+      pressureSamples.add(yAxisMin + i * pressureStep);
+    }
+
+    boundaries.forEach((boundary) => {
+      boundary.points.forEach((pt) => {
+        const clamped = Math.min(Math.max(pt.y, yAxisMin), yAxisMax);
+        pressureSamples.add(clamped);
+      });
     });
-    return path;
-  };
 
-  const generateLiquidGasBoundary = () => {
-    let path = `M ${tempToX(triplePoint.temp)},${pressureToY(
-      triplePoint.pressure
-    )}`;
-    // Exponential curve from triple point to critical point
-    const numPoints = 50;
-    for (let i = 0; i <= numPoints; i++) {
-      const t = i / numPoints;
-      const temp =
-        triplePoint.temp + t * (criticalPoint.temp - triplePoint.temp);
-      const pressure =
-        triplePoint.pressure +
-        Math.pow(t, 1.5) * (criticalPoint.pressure - triplePoint.pressure);
-      path += ` L ${tempToX(temp)},${pressureToY(pressure)}`;
-    }
-    return path;
-  };
+    const sortedPressures = Array.from(pressureSamples).sort((a, b) => a - b);
 
-  const generateSolidGasBoundary = () => {
-    let path = `M ${tempToX(tempMin)},${pressureToY(0.001)}`;
-    // Curve from low temp to triple point
-    const numPoints = 30;
-    for (let i = 0; i <= numPoints; i++) {
-      const t = i / numPoints;
-      const temp = tempMin + t * (triplePoint.temp - tempMin);
-      const pressure = 0.001 + Math.pow(t, 2) * (triplePoint.pressure - 0.001);
-      path += ` L ${tempToX(temp)},${pressureToY(pressure)}`;
-    }
-    return path;
-  };
+    const getBoundaryTemperature = (
+      boundaryId: PhaseRegion["lowerBoundary"],
+      pressure: number
+    ): number | null => {
+      if (!boundaryId || boundaryId === "axis-min") {
+        return xAxisMin;
+      }
+      if (boundaryId === "axis-max") {
+        return xAxisMax;
+      }
+      const boundary = boundaryMap.get(boundaryId);
+      if (!boundary) {
+        return null;
+      }
+      return getTemperatureAtPressure(boundary.points, pressure);
+    };
 
-  // Handle touch gestures
-  const panGesture = Gesture.Pan()
-    .minDistance(0)
-    .onBegin((event) => {
-      const x = event.x;
-      const y = event.y;
-
-      // Check if within chart bounds
-      if (
-        x >= padding.left &&
-        x <= width - padding.right &&
-        y >= padding.top &&
-        y <= height - padding.bottom
-      ) {
-        const temp = xToTemp(x);
-        const pressure = yToPressure(y);
-        const phase = determinePhase(temp, pressure);
-
-        setTouchInfo({
-          temperature: temp,
-          pressure,
-          phase,
+    const flushSegment = (
+      leftEdge: XY[],
+      rightEdge: XY[],
+      regionConfig: PhaseRegion
+    ) => {
+      if (leftEdge.length >= 2 && rightEdge.length === leftEdge.length) {
+        const areaPoints = [...leftEdge, ...rightEdge.slice().reverse()];
+        result.push({
+          points: areaPoints,
+          fillColor: regionConfig.fillColor,
+          opacity: regionConfig.opacity ?? 0.3,
         });
       }
-    })
-    .onUpdate((event) => {
-      const x = event.x;
-      const y = event.y;
+    };
 
-      // Check if within chart bounds
-      if (
-        x >= padding.left &&
-        x <= width - padding.right &&
-        y >= padding.top &&
-        y <= height - padding.bottom
-      ) {
-        const temp = xToTemp(x);
-        const pressure = yToPressure(y);
-        const phase = determinePhase(temp, pressure);
+    for (const region of regions) {
+      let currentLeft: XY[] = [];
+      let currentRight: XY[] = [];
 
-        setTouchInfo({
-          temperature: temp,
-          pressure,
-          phase,
-        });
+      const closeCurrentSegment = () => {
+        if (currentLeft.length > 0 && currentRight.length > 0) {
+          flushSegment(currentLeft, currentRight, region);
+        }
+        currentLeft = [];
+        currentRight = [];
+      };
+
+      for (const pressure of sortedPressures) {
+        const leftTemp = getBoundaryTemperature(region.lowerBoundary, pressure);
+        const rightTemp = getBoundaryTemperature(
+          region.upperBoundary,
+          pressure
+        );
+
+        if (
+          leftTemp === null ||
+          rightTemp === null ||
+          Number.isNaN(leftTemp) ||
+          Number.isNaN(rightTemp) ||
+          leftTemp > rightTemp
+        ) {
+          closeCurrentSegment();
+          continue;
+        }
+
+        currentLeft.push({ x: leftTemp, y: pressure });
+        currentRight.push({ x: rightTemp, y: pressure });
       }
-    })
-    .onEnd(() => {
+
+      closeCurrentSegment();
+    }
+
+    return result;
+  }, [
+    boundaries,
+    regions,
+    manualAreas,
+    xAxisMin,
+    xAxisMax,
+    yAxisMin,
+    yAxisMax,
+  ]);
+
+  // Determine phase by comparing temperature against left/right boundaries at a given pressure
+  const determinePhase = (temperature: number, pressure: number): string => {
+    const boundaryMap = new Map<string, PhaseBoundary>();
+    boundaries.forEach((b) => boundaryMap.set(b.id, b));
+
+    const getBoundaryTemperature = (
+      boundaryId: PhaseRegion["lowerBoundary"]
+    ): number | null => {
+      if (!boundaryId || boundaryId === "axis-min") {
+        return xAxisMin;
+      }
+      if (boundaryId === "axis-max") {
+        return xAxisMax;
+      }
+      const boundary = boundaryMap.get(boundaryId);
+      if (!boundary) {
+        return null;
+      }
+      return getTemperatureAtPressure(boundary.points, pressure);
+    };
+
+    for (const region of regions) {
+      const leftTemp = getBoundaryTemperature(region.lowerBoundary);
+      const rightTemp = getBoundaryTemperature(region.upperBoundary);
+
+      if (leftTemp === null || rightTemp === null || leftTemp > rightTemp) {
+        continue;
+      }
+
+      if (temperature >= leftTemp && temperature <= rightTemp) {
+        return region.name;
+      }
+    }
+
+    return "Unknown";
+  };
+
+  // Use Chart's onTouchChange to compute phase info
+  const handleTouchChange = (coords: { x: number; y: number } | null) => {
+    if (!coords) {
       setTouchInfo(null);
-    });
-
-  // Generate grid lines
-  const generateTempGridLines = () => {
-    // Include 0°C as a key gridline, plus others
-    const temps = [0.01, 100, 374]; // 0.01: triple point, 374: critical point temp
-    return temps.map((temp) => {
-      return (
-        <G key={`temp-${temp}`}>
-          <Line
-            x1={tempToX(temp)}
-            y1={padding.top}
-            x2={tempToX(temp)}
-            y2={height - padding.bottom}
-            stroke="#e0e0e0"
-            strokeWidth={temp === 0.01 || temp === 374 ? "2" : "1"}
-            strokeDasharray={temp === 0.01 || temp === 374 ? "2,2" : "4,4"}
-          />
-          <SvgText
-            x={tempToX(temp)}
-            y={height - padding.bottom + 20}
-            fontSize="12"
-            fill="#fff"
-            textAnchor="middle"
-            fontWeight={temp === 0.01 || temp === 374 ? "bold" : "normal"}
-          >
-            {temp}
-          </SvgText>
-        </G>
-      );
-    });
-  };
-
-  const generatePressureGridLines = () => {
-    const pressures = [0.006, 1, 217.7]; // 0.006: triple point, 217.7: critical point pressure
-    return pressures.map((pressure) => (
-      <G key={`pressure-${pressure}`}>
-        <Line
-          x1={padding.left}
-          y1={pressureToY(pressure)}
-          x2={width - padding.right}
-          y2={pressureToY(pressure)}
-          stroke="#e0e0e0"
-          strokeWidth={pressure === 0.006 || pressure === 217.7 ? "2" : "1"}
-          strokeDasharray={
-            pressure === 0.006 || pressure === 217.7 ? "2,2" : "4,4"
-          }
-        />
-        <SvgText
-          x={padding.left - 10}
-          y={pressureToY(pressure) + 4}
-          fontSize="12"
-          fill="#fff"
-          textAnchor="end"
-          fontWeight={
-            pressure === 0.006 || pressure === 217.7 ? "bold" : "normal"
-          }
-        >
-          {pressure}
-        </SvgText>
-      </G>
-    ));
+      return;
+    }
+    const temp = coords.x;
+    const pressure = coords.y;
+    const phaseName = determinePhase(temp, pressure);
+    setTouchInfo({ temperature: temp, pressure, phase: phaseName });
   };
 
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <View style={styles.chartContainer}>
-        <GestureDetector gesture={panGesture}>
-          <Svg width={width} height={height}>
-            {/* Background regions with colors */}
-            {/* Solid region - left of melting curve and below sublimation curve */}
-            <Path
-              d={`M ${padding.left},${height - padding.bottom} L ${
-                padding.left
-              },${padding.top} L ${tempToX(-45)},${padding.top} L ${tempToX(
-                -45
-              )},${pressureToY(pressureMax)} L ${tempToX(-40)},${pressureToY(
-                1200
-              )} L ${tempToX(-35)},${pressureToY(1000)} L ${tempToX(
-                -30
-              )},${pressureToY(800)} L ${tempToX(-25)},${pressureToY(
-                600
-              )} L ${tempToX(-20)},${pressureToY(400)} L ${tempToX(
-                -15
-              )},${pressureToY(200)} L ${tempToX(-10)},${pressureToY(
-                100
-              )} L ${tempToX(-5)},${pressureToY(50)} L ${tempToX(
-                triplePoint.temp
-              )},${pressureToY(triplePoint.pressure)} L ${tempToX(
-                tempMin
-              )},${pressureToY(0.001)} L ${padding.left},${
-                height - padding.bottom
-              } Z`}
-              fill="#a8d5ff"
-              opacity={0.3}
-            />
-
-            {/* Liquid region - between melting and vaporization curves */}
-            <Path
-              d={`${generateSolidLiquidBoundary()} L ${tempToX(
-                -45
-              )},${pressureToY(pressureMax)} L ${tempToX(-45)},${
-                padding.top
-              } L ${width - padding.right},${padding.top} L ${
-                width - padding.right
-              },${pressureToY(criticalPoint.pressure)} L ${tempToX(
-                criticalPoint.temp
-              )},${pressureToY(
-                criticalPoint.pressure
-              )} ${generateLiquidGasBoundary().replace("M", "L")} Z`}
-              fill="#6bb6ff"
-              opacity={0.4}
-            />
-
-            {/* Gas region - right of vaporization and sublimation curves */}
-            <Path
-              d={`${generateSolidGasBoundary()} L ${tempToX(
-                triplePoint.temp
-              )},${pressureToY(
-                triplePoint.pressure
-              )} ${generateLiquidGasBoundary().replace("M", "L")} L ${tempToX(
-                criticalPoint.temp
-              )},${pressureToY(criticalPoint.pressure)} L ${
-                width - padding.right
-              },${pressureToY(criticalPoint.pressure)} L ${
-                width - padding.right
-              },${height - padding.bottom} L ${tempToX(tempMin)},${
-                height - padding.bottom
-              } Z`}
-              fill="#fff5e6"
-              opacity={0.5}
-            />
-
-            {/* Grid lines */}
-            {generateTempGridLines()}
-            {generatePressureGridLines()}
-
-            {/* Axes */}
-            <Line
-              x1={padding.left}
-              y1={padding.top}
-              x2={padding.left}
-              y2={height - padding.bottom}
-              stroke="#fff"
-              strokeWidth="2"
-            />
-            <Line
-              x1={padding.left}
-              y1={height - padding.bottom}
-              x2={width - padding.right}
-              y2={height - padding.bottom}
-              stroke="#fff"
-              strokeWidth="2"
-            />
-
-            {/* Phase boundary lines */}
-            <Path
-              d={generateSolidLiquidBoundary()}
-              stroke="#FFD700"
-              strokeWidth="2.5"
-              fill="none"
-            />
-            <Path
-              d={generateLiquidGasBoundary()}
-              stroke="#FFD700"
-              strokeWidth="2.5"
-              fill="none"
-            />
-            <Path
-              d={generateSolidGasBoundary()}
-              stroke="#FFD700"
-              strokeWidth="2.5"
-              fill="none"
-            />
-
-            {/* Key points */}
-            {/* Triple Point */}
-            <Circle
-              cx={tempToX(triplePoint.temp)}
-              cy={pressureToY(triplePoint.pressure)}
-              r="5"
-              fill="#00FF00"
-              stroke="#fff"
-              strokeWidth="2"
-            />
-            <SvgText
-              x={tempToX(triplePoint.temp) + 15}
-              y={pressureToY(triplePoint.pressure) - 10}
-              fontSize="11"
-              fill="#00FF00"
-              fontWeight="bold"
-            >
-              Triple Point
-            </SvgText>
-
-            {/* Critical Point */}
-            <Circle
-              cx={tempToX(criticalPoint.temp)}
-              cy={pressureToY(criticalPoint.pressure)}
-              r="6"
-              fill="#FF0000"
-              stroke="#fff"
-              strokeWidth="2"
-            />
-            <SvgText
-              x={tempToX(criticalPoint.temp) - 10}
-              y={pressureToY(criticalPoint.pressure) - 15}
-              fontSize="11"
-              fill="#FF0000"
-              fontWeight="bold"
-              textAnchor="end"
-            >
-              Critical Point
-            </SvgText>
-
-            {/* Labels */}
-            <SvgText
-              x={width / 2}
-              y={height - 15}
-              fontSize="14"
-              fill="#fff"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              Temperature (°C)
-            </SvgText>
-            <SvgText
-              x={20}
-              y={height / 2}
-              fontSize="14"
-              fill="#fff"
-              fontWeight="bold"
-              textAnchor="middle"
-              transform={`rotate(-90, 20, ${height / 2})`}
-            >
-              Pressure (atm)
-            </SvgText>
-
-            {/* Phase labels */}
-            <SvgText
-              x={tempToX(-130)}
-              y={pressureToY(4)}
-              fontSize="16"
-              fill="#fff"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              Solid
-            </SvgText>
-            <SvgText
-              x={tempToX(4.8)}
-              y={pressureToY(36)}
-              fontSize="16"
-              fill="#fff"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              Liquid
-            </SvgText>
-            <SvgText
-              x={tempToX(51)}
-              y={pressureToY(0.12)}
-              fontSize="16"
-              fill="#fff"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              Gas
-            </SvgText>
-
-            {/* Touch indicator */}
-            {touchInfo && (
-              <Circle
-                cx={tempToX(touchInfo.temperature)}
-                cy={pressureToY(touchInfo.pressure)}
-                r="8"
-                fill="rgba(255, 0, 0, 0.5)"
-                stroke="#ff0000"
-                strokeWidth="2"
+    <Chart
+      width={width}
+      height={height}
+      xAxisMin={xAxisMin}
+      xAxisMax={xAxisMax}
+      yAxisMin={yAxisMin}
+      yAxisMax={yAxisMax}
+      xAxisTicks={xAxisTicks}
+      yAxisTicks={yAxisTicks}
+      xScale={xScale}
+      yScale={yScale}
+      xAxisLabel={xAxisLabel}
+      yAxisLabel={yAxisLabel}
+      touchValuePrecision={touchValuePrecision}
+      touchValueThreshold={touchValueThreshold}
+      markers={markers}
+      onTouchChange={handleTouchChange}
+      infoBoxRenderer={(info, labels) =>
+        info ? (
+          <>
+            {determinePhase ? (
+              <Text style={styles.infoTitle}>
+                Phase: {determinePhase(info.x, info.y)}
+              </Text>
+            ) : null}
+            <Text style={styles.infoText}>
+              {labels.xAxisLabel}: {info.x.toFixed(1)}
+            </Text>
+            <Text style={styles.infoText}>
+              {labels.yAxisLabel}: {formatPressure(info.y)}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.infoPlaceholderSpacer}> </Text>
+            <Text style={styles.infoPlaceholder}>
+              Touch the chart to see phase information
+            </Text>
+            <Text style={styles.infoPlaceholderSpacer}> </Text>
+          </>
+        )
+      }
+    >
+      {(ctx) => {
+        const toX = ctx.valueToScreenX;
+        const toY = ctx.valueToScreenY;
+        const boundaryList = boundaries;
+        const areaList = generatedAreas;
+        const labelList = labels;
+        return (
+          <>
+            {areaList.map((area, idx) => (
+              <Path
+                key={`area-${idx}`}
+                d={`${buildPathFromPoints(area.points, toX, toY)} Z`}
+                fill={area.fillColor ?? "#888"}
+                opacity={area.opacity ?? 0.3}
               />
-            )}
-          </Svg>
-        </GestureDetector>
-        <View style={styles.infoBox}>
-          {touchInfo ? (
-            <>
-              <Text style={styles.infoTitle}>Phase: {touchInfo.phase}</Text>
-              <Text style={styles.infoText}>
-                Temperature: {touchInfo.temperature.toFixed(1)}°C
-              </Text>
-              <Text style={styles.infoText}>
-                Pressure: {formatPressure(touchInfo.pressure)} atm
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.infoPlaceholderSpacer}> </Text>
-              <Text style={styles.infoPlaceholder}>
-                Touch the chart to see phase information
-              </Text>
-              <Text style={styles.infoPlaceholderSpacer}> </Text>
-            </>
-          )}
-        </View>
-      </View>
-    </GestureHandlerRootView>
+            ))}
+            {boundaryList.map((b, idx) => (
+              <Path
+                key={`boundary-${idx}`}
+                d={buildPathFromPoints(b.points, toX, toY)}
+                stroke={b.strokeColor ?? "#FFD700"}
+                strokeWidth={b.strokeWidth ?? 2}
+                fill="none"
+              />
+            ))}
+            {labelList.map((lab, idx) => (
+              <SvgText
+                key={`label-${idx}`}
+                x={toX(lab.x)}
+                y={toY(lab.y)}
+                fontSize={lab.fontSize ?? 14}
+                fill={lab.color ?? "#fff"}
+                fontWeight={lab.fontWeight ?? "bold"}
+                textAnchor={lab.textAnchor ?? "middle"}
+              >
+                {lab.label}
+              </SvgText>
+            ))}
+          </>
+        );
+      }}
+    </Chart>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chartContainer: {
-    position: "relative",
-    alignItems: "center",
-  },
-  infoBox: {
-    marginTop: 16,
-    padding: 16,
-    width: "100%",
-    alignItems: "center",
-  },
   infoTitle: {
     fontSize: 18,
     fontWeight: "bold",

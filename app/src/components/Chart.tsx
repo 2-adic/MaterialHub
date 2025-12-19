@@ -8,6 +8,16 @@ import {
 } from "react-native-gesture-handler";
 import Marker, { MarkerProps } from "./Marker";
 
+interface ChartRenderProps {
+  valueToScreenX: (value: number) => number;
+  valueToScreenY: (value: number) => number;
+  padding: { top: number; right: number; bottom: number; left: number };
+  width: number;
+  height: number;
+  chartWidth: number;
+  chartHeight: number;
+}
+
 interface ChartProps {
   xAxisMin: number;
   xAxisMax: number;
@@ -24,7 +34,12 @@ interface ChartProps {
   width?: number;
   height?: number;
   markers?: MarkerProps[];
-  children?: React.ReactNode;
+  children?: React.ReactNode | ((helpers: ChartRenderProps) => React.ReactNode);
+  onTouchChange?: (coords: { x: number; y: number } | null) => void;
+  infoBoxRenderer?: (
+    info: TouchInfo | null,
+    labels: { xAxisLabel: string; yAxisLabel: string }
+  ) => React.ReactNode;
 }
 
 interface TouchInfo {
@@ -51,6 +66,8 @@ const Chart: React.FC<ChartProps> = ({
   touchValueThreshold = 0.001,
   markers = [],
   children,
+  onTouchChange,
+  infoBoxRenderer,
 }) => {
   const [touchInfo, setTouchInfo] = useState<TouchInfo | null>(null);
 
@@ -177,6 +194,9 @@ const Chart: React.FC<ChartProps> = ({
           displayX: formatTouchValue(xValue),
           displayY: formatTouchValue(yValue),
         });
+        if (onTouchChange) {
+          onTouchChange({ x: xValue, y: yValue });
+        }
       }
     })
     .onUpdate((event) => {
@@ -199,10 +219,16 @@ const Chart: React.FC<ChartProps> = ({
           displayX: formatTouchValue(xValue),
           displayY: formatTouchValue(yValue),
         });
+        if (onTouchChange) {
+          onTouchChange({ x: xValue, y: yValue });
+        }
       }
     })
     .onEnd(() => {
       setTouchInfo(null);
+      if (onTouchChange) {
+        onTouchChange(null);
+      }
     });
 
   // Generate grid lines based on provided ticks
@@ -329,8 +355,6 @@ const Chart: React.FC<ChartProps> = ({
             {/* Grid lines */}
             {generateXGridLines()}
             {generateYGridLines()}
-            {/* Marker tick marks */}
-            {generateMarkerTickMarks()}
 
             {/* Axes */}
             <Line
@@ -373,8 +397,21 @@ const Chart: React.FC<ChartProps> = ({
               {yAxisLabel}
             </SvgText>
 
-            {/* Custom content passed as children */}
-            {children}
+            {/* Custom content passed as children or render-prop */}
+            {typeof children === "function"
+              ? (children as (helpers: ChartRenderProps) => React.ReactNode)({
+                  valueToScreenX,
+                  valueToScreenY,
+                  padding,
+                  width,
+                  height,
+                  chartWidth,
+                  chartHeight,
+                })
+              : children}
+
+            {/* Marker tick marks - rendered after regions so they appear on top */}
+            {generateMarkerTickMarks()}
 
             {/* Markers */}
             {markers.map((marker, index) => (
@@ -410,7 +447,9 @@ const Chart: React.FC<ChartProps> = ({
           </Svg>
         </GestureDetector>
         <View style={styles.infoBox}>
-          {touchInfo ? (
+          {infoBoxRenderer ? (
+            infoBoxRenderer(touchInfo, { xAxisLabel, yAxisLabel })
+          ) : touchInfo ? (
             <>
               <Text style={styles.infoText}>
                 {xAxisLabel}: {touchInfo.displayX}
