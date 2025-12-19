@@ -1,16 +1,12 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
-import Svg, {
-  Line,
-  Circle,
-  Text as SvgText,
-  G,
-} from "react-native-svg";
+import Svg, { Line, Circle, Text as SvgText, G } from "react-native-svg";
 import {
   GestureDetector,
   Gesture,
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
+import Marker, { MarkerProps } from "./Marker";
 
 interface ChartProps {
   xAxisMin: number;
@@ -27,6 +23,7 @@ interface ChartProps {
   touchValueThreshold?: number;
   width?: number;
   height?: number;
+  markers?: MarkerProps[];
   children?: React.ReactNode;
 }
 
@@ -52,6 +49,7 @@ const Chart: React.FC<ChartProps> = ({
   yAxisLabel = "Y Axis",
   touchValuePrecision = 3,
   touchValueThreshold = 0.001,
+  markers = [],
   children,
 }) => {
   const [touchInfo, setTouchInfo] = useState<TouchInfo | null>(null);
@@ -264,6 +262,65 @@ const Chart: React.FC<ChartProps> = ({
     });
   };
 
+  const generateMarkerTickMarks = () => {
+    return markers
+      .filter((marker) => marker.showTickMarks !== false)
+      .map((marker, index) => {
+        const screenX = valueToScreenX(marker.x);
+        const screenY = valueToScreenY(marker.y);
+        const tickColor = marker.tickMarkColor ?? "#e0e0e0";
+        const tickStrokeWidth = marker.tickMarkStrokeWidth ?? 2;
+        const tickDashArray = marker.tickMarkDashArray ?? "2,2";
+        const tickLabelWeight = marker.tickMarkLabelFontWeight ?? "bold";
+        return (
+          <G key={`marker-ticks-${index}`}>
+            {/* Vertical tick line */}
+            <Line
+              x1={screenX}
+              y1={padding.top}
+              x2={screenX}
+              y2={height - padding.bottom}
+              stroke={tickColor}
+              strokeWidth={tickStrokeWidth}
+              strokeDasharray={tickDashArray}
+            />
+            {/* Horizontal tick line */}
+            <Line
+              x1={padding.left}
+              y1={screenY}
+              x2={width - padding.right}
+              y2={screenY}
+              stroke={tickColor}
+              strokeWidth={tickStrokeWidth}
+              strokeDasharray={tickDashArray}
+            />
+            {/* X-axis label */}
+            <SvgText
+              x={screenX}
+              y={height - padding.bottom + 20}
+              fontSize="12"
+              fill="#fff"
+              textAnchor="middle"
+              fontWeight={tickLabelWeight}
+            >
+              {formatValue(marker.x)}
+            </SvgText>
+            {/* Y-axis label */}
+            <SvgText
+              x={padding.left - 10}
+              y={screenY + 4}
+              fontSize="12"
+              fill="#fff"
+              textAnchor="end"
+              fontWeight={tickLabelWeight}
+            >
+              {formatValue(marker.y)}
+            </SvgText>
+          </G>
+        );
+      });
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <View style={styles.chartContainer}>
@@ -272,6 +329,8 @@ const Chart: React.FC<ChartProps> = ({
             {/* Grid lines */}
             {generateXGridLines()}
             {generateYGridLines()}
+            {/* Marker tick marks */}
+            {generateMarkerTickMarks()}
 
             {/* Axes */}
             <Line
@@ -316,6 +375,26 @@ const Chart: React.FC<ChartProps> = ({
 
             {/* Custom content passed as children */}
             {children}
+
+            {/* Markers */}
+            {markers.map((marker, index) => (
+              <Marker
+                key={`marker-${index}`}
+                x={valueToScreenX(marker.x)}
+                y={valueToScreenY(marker.y)}
+                radius={marker.radius}
+                color={marker.color}
+                strokeColor={marker.strokeColor}
+                strokeWidth={marker.strokeWidth}
+                label={marker.label}
+                labelOffsetX={marker.labelOffsetX}
+                labelOffsetY={marker.labelOffsetY}
+                labelFontSize={marker.labelFontSize}
+                labelColor={marker.labelColor}
+                labelFontWeight={marker.labelFontWeight}
+                labelTextAnchor={marker.labelTextAnchor}
+              />
+            ))}
 
             {/* Touch indicator */}
             {touchInfo && (
