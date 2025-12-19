@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
-import Svg, { Line, Circle, Text as SvgText, G } from "react-native-svg";
+import Svg, {
+  Line,
+  Circle,
+  Text as SvgText,
+  G,
+  Defs,
+  ClipPath,
+  Rect,
+  Polygon,
+} from "react-native-svg";
 import {
   GestureDetector,
   Gesture,
@@ -352,26 +361,70 @@ const Chart: React.FC<ChartProps> = ({
       <View style={styles.chartContainer}>
         <GestureDetector gesture={panGesture}>
           <Svg width={width} height={height}>
+            <Defs>
+              <ClipPath id="chart-clip">
+                <Rect
+                  x={padding.left}
+                  y={padding.top}
+                  width={chartWidth}
+                  height={chartHeight}
+                />
+              </ClipPath>
+            </Defs>
+
             {/* Grid lines */}
             {generateXGridLines()}
             {generateYGridLines()}
 
-            {/* Axes */}
+            {/* Custom content passed as children or render-prop - clipped to chart area */}
+            <G clipPath="url(#chart-clip)">
+              {typeof children === "function"
+                ? (children as (helpers: ChartRenderProps) => React.ReactNode)({
+                    valueToScreenX,
+                    valueToScreenY,
+                    padding,
+                    width,
+                    height,
+                    chartWidth,
+                    chartHeight,
+                  })
+                : children}
+            </G>
+
+            {/* Axes - rendered after boundaries so they appear on top */}
             <Line
               x1={padding.left}
-              y1={padding.top}
+              y1={padding.top + 10}
               x2={padding.left}
-              y2={height - padding.bottom}
+              y2={height - padding.bottom + 1}
               stroke="#fff"
               strokeWidth="2"
             />
             <Line
-              x1={padding.left}
+              x1={padding.left - 1}
               y1={height - padding.bottom}
-              x2={width - padding.right}
+              x2={width - padding.right - 10}
               y2={height - padding.bottom}
               stroke="#fff"
               strokeWidth="2"
+            />
+
+            {/* Axis arrows */}
+            {/* Y-axis arrow (pointing up) */}
+            <Polygon
+              points={`${padding.left},${padding.top} ${padding.left - 5},${
+                padding.top + 10
+              } ${padding.left + 5},${padding.top + 10}`}
+              fill="#fff"
+            />
+            {/* X-axis arrow (pointing right) */}
+            <Polygon
+              points={`${width - padding.right},${height - padding.bottom} ${
+                width - padding.right - 10
+              },${height - padding.bottom - 5} ${width - padding.right - 10},${
+                height - padding.bottom + 5
+              }`}
+              fill="#fff"
             />
 
             {/* Axis labels */}
@@ -396,19 +449,6 @@ const Chart: React.FC<ChartProps> = ({
             >
               {yAxisLabel}
             </SvgText>
-
-            {/* Custom content passed as children or render-prop */}
-            {typeof children === "function"
-              ? (children as (helpers: ChartRenderProps) => React.ReactNode)({
-                  valueToScreenX,
-                  valueToScreenY,
-                  padding,
-                  width,
-                  height,
-                  chartWidth,
-                  chartHeight,
-                })
-              : children}
 
             {/* Marker tick marks - rendered after regions so they appear on top */}
             {generateMarkerTickMarks()}
