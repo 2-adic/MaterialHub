@@ -187,50 +187,42 @@ const Chart: React.FC<ChartProps> = ({
       const x = event.x;
       const y = event.y;
 
-      // Check if within chart bounds
-      if (
-        x >= padding.left &&
-        x <= width - padding.right &&
-        y >= padding.top &&
-        y <= height - padding.bottom
-      ) {
-        const xValue = screenXToValue(x);
-        const yValue = screenYToValue(y);
+      // Clamp coordinates to chart bounds
+      const clampedX = clamp(x, padding.left, width - padding.right);
+      const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-        setTouchInfo({
-          x: xValue,
-          y: yValue,
-          displayX: formatTouchValue(xValue),
-          displayY: formatTouchValue(yValue),
-        });
-        if (onTouchChange) {
-          onTouchChange({ x: xValue, y: yValue });
-        }
+      const xValue = screenXToValue(clampedX);
+      const yValue = screenYToValue(clampedY);
+
+      setTouchInfo({
+        x: xValue,
+        y: yValue,
+        displayX: formatTouchValue(xValue),
+        displayY: formatTouchValue(yValue),
+      });
+      if (onTouchChange) {
+        onTouchChange({ x: xValue, y: yValue });
       }
     })
     .onUpdate((event) => {
       const x = event.x;
       const y = event.y;
 
-      // Check if within chart bounds
-      if (
-        x >= padding.left &&
-        x <= width - padding.right &&
-        y >= padding.top &&
-        y <= height - padding.bottom
-      ) {
-        const xValue = screenXToValue(x);
-        const yValue = screenYToValue(y);
+      // Clamp coordinates to chart bounds
+      const clampedX = clamp(x, padding.left, width - padding.right);
+      const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-        setTouchInfo({
-          x: xValue,
-          y: yValue,
-          displayX: formatTouchValue(xValue),
-          displayY: formatTouchValue(yValue),
-        });
-        if (onTouchChange) {
-          onTouchChange({ x: xValue, y: yValue });
-        }
+      const xValue = screenXToValue(clampedX);
+      const yValue = screenYToValue(clampedY);
+
+      setTouchInfo({
+        x: xValue,
+        y: yValue,
+        displayX: formatTouchValue(xValue),
+        displayY: formatTouchValue(yValue),
+      });
+      if (onTouchChange) {
+        onTouchChange({ x: xValue, y: yValue });
       }
     })
     .onEnd(() => {

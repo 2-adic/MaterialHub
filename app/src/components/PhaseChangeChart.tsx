@@ -89,6 +89,11 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
   areas: manualAreas,
 }) => {
   const [touchInfo, setTouchInfo] = useState<PhaseInfo | null>(null);
+  const pressureAxisTolerance = Math.max(
+    touchValueThreshold ?? 0,
+    (yAxisMax - yAxisMin) * 1e-9,
+    1e-10
+  );
 
   // Pressure formatter
   const formatPressure = (pressure: number) => {
@@ -99,6 +104,23 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       return pressure.toFixed(3);
     }
     return pressure.toFixed(4);
+  };
+
+  const normalizeAxisValue = (
+    value: number,
+    minValue: number,
+    maxValue: number,
+    customTolerance?: number
+  ): number => {
+    const baseTolerance = Math.max((maxValue - minValue) * 1e-9, 1e-10);
+    const epsilon = Math.max(baseTolerance, customTolerance ?? 0);
+    if (Math.abs(value - minValue) <= epsilon) {
+      return minValue;
+    }
+    if (Math.abs(value - maxValue) <= epsilon) {
+      return maxValue;
+    }
+    return value;
   };
 
   // Utility to build path from points
@@ -119,9 +141,24 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
   // Uses linear interpolation between points
   const getTemperatureAtPressure = (
     points: XY[],
-    pressure: number
+    pressure: number,
+    side: "left" | "right"
   ): number | null => {
     if (points.length === 0) return null;
+
+    // Use epsilon relative to the pressure range for better scaling across different diagrams
+    const pressureRange = yAxisMax - yAxisMin;
+    const EPSILON = Math.max(pressureRange * 1e-9, 1e-10);
+
+    if (Math.abs(pressure - yAxisMin) <= pressureAxisTolerance) {
+      const nearAxisPoints = points.filter(
+        (p) => Math.abs(p.y - yAxisMin) <= pressureAxisTolerance
+      );
+      if (nearAxisPoints.length > 0) {
+        const xs = nearAxisPoints.map((p) => p.x);
+        return side === "left" ? Math.min(...xs) : Math.max(...xs);
+      }
+    }
 
     for (let i = 0; i < points.length - 1; i++) {
       const p1 = points[i];
@@ -130,8 +167,8 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       const minP = Math.min(p1.y, p2.y);
       const maxP = Math.max(p1.y, p2.y);
 
-      if (pressure >= minP && pressure <= maxP) {
-        if (maxP === minP) {
+      if (pressure >= minP - EPSILON && pressure <= maxP + EPSILON) {
+        if (Math.abs(maxP - minP) < EPSILON) {
           // Horizontal segment at constant pressure
           return p2.x;
         }
@@ -172,7 +209,8 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
 
     const getBoundaryTemperature = (
       boundaryId: PhaseRegion["lowerBoundary"],
-      pressure: number
+      pressure: number,
+      side: "left" | "right"
     ): number | null => {
       if (!boundaryId || boundaryId === "axis-min") {
         return xAxisMin;
@@ -184,7 +222,7 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       if (!boundary) {
         return null;
       }
-      return getTemperatureAtPressure(boundary.points, pressure);
+      return getTemperatureAtPressure(boundary.points, pressure, side);
     };
 
     const flushSegment = (
@@ -215,10 +253,15 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       };
 
       for (const pressure of sortedPressures) {
-        const leftTemp = getBoundaryTemperature(region.lowerBoundary, pressure);
+        const leftTemp = getBoundaryTemperature(
+          region.lowerBoundary,
+          pressure,
+          "left"
+        );
         const rightTemp = getBoundaryTemperature(
           region.upperBoundary,
-          pressure
+          pressure,
+          "right"
         );
 
         if (
@@ -252,11 +295,20 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
 
   // Determine phase by comparing temperature against left/right boundaries at a given pressure
   const determinePhase = (temperature: number, pressure: number): string => {
+    const normalizedTemp = normalizeAxisValue(temperature, xAxisMin, xAxisMax);
+    const normalizedPressure = normalizeAxisValue(
+      pressure,
+      yAxisMin,
+      yAxisMax,
+      pressureAxisTolerance
+    );
+
     const boundaryMap = new Map<string, PhaseBoundary>();
     boundaries.forEach((b) => boundaryMap.set(b.id, b));
 
     const getBoundaryTemperature = (
-      boundaryId: PhaseRegion["lowerBoundary"]
+      boundaryId: PhaseRegion["lowerBoundary"],
+      side: "left" | "right"
     ): number | null => {
       if (!boundaryId || boundaryId === "axis-min") {
         return xAxisMin;
@@ -268,18 +320,22 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       if (!boundary) {
         return null;
       }
-      return getTemperatureAtPressure(boundary.points, pressure);
+      return getTemperatureAtPressure(
+        boundary.points,
+        normalizedPressure,
+        side
+      );
     };
 
     for (const region of regions) {
-      const leftTemp = getBoundaryTemperature(region.lowerBoundary);
-      const rightTemp = getBoundaryTemperature(region.upperBoundary);
+      const leftTemp = getBoundaryTemperature(region.lowerBoundary, "left");
+      const rightTemp = getBoundaryTemperature(region.upperBoundary, "right");
 
       if (leftTemp === null || rightTemp === null || leftTemp > rightTemp) {
         continue;
       }
 
-      if (temperature >= leftTemp && temperature <= rightTemp) {
+      if (normalizedTemp >= leftTemp && normalizedTemp <= rightTemp) {
         return region.name;
       }
     }
@@ -326,10 +382,10 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
               </Text>
             ) : null}
             <Text style={styles.infoText}>
-              {labels.xAxisLabel}: {info.x.toFixed(1)}
+              {labels.xAxisLabel}: {info.displayX}
             </Text>
             <Text style={styles.infoText}>
-              {labels.yAxisLabel}: {formatPressure(info.y)}
+              {labels.yAxisLabel}: {info.displayY}
             </Text>
           </>
         ) : (

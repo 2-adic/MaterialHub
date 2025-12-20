@@ -38,8 +38,11 @@ export const WaterPhaseChangeChart = {
     const segmentFraction = 0.2;
 
     if (value <= segmentTransition) {
-      const normalized = (value - min) / (segmentTransition - min);
-      return normalized * segmentFraction;
+      const logValue = Math.log10(value - min + 1);
+      const logMax = Math.log10(segmentTransition - min + 1);
+      const normalized = logValue / logMax;
+      const enhanced = Math.pow(normalized, 0.4);
+      return enhanced * segmentFraction;
     } else {
       const logValue = Math.log10(value);
       const logMin = Math.log10(segmentTransition);
@@ -50,6 +53,8 @@ export const WaterPhaseChangeChart = {
   },
   xAxisLabel: "Temperature (°C)",
   yAxisLabel: "Pressure (atm)",
+  touchValuePrecision: 5,
+  touchValueThreshold: 0.000000001,
   markers: [
     {
       x: 0.01,
@@ -88,6 +93,7 @@ export const WaterPhaseChangeChart = {
     {
       id: "gas-solid",
       points: [
+        { x: -273.15, y: 0 },
         { x: -100, y: 0.0000000138 },
         { x: -90, y: 0.0000000949 },
         { x: -80, y: 0.000000537 },
