@@ -181,6 +181,7 @@ export const WaterPhaseChangeChart = {
       ],
       strokeColor: "transparent",
       strokeWidth: 0,
+      snapEnabled: false,
     },
   ],
   regions: [

@@ -28,6 +28,7 @@ interface SnapLine {
   label?: string;
   points: SnapLinePoint[];
   snapDistance?: number;
+  snapEnabled?: boolean;
 }
 
 interface SnappedBoundaryInfo {
@@ -289,6 +290,9 @@ const Chart: React.FC<ChartProps> = ({
 
     for (const line of snapLines) {
       if (!line.points || line.points.length < 2) {
+        continue;
+      }
+      if (line.snapEnabled === false) {
         continue;
       }
 
@@ -750,13 +754,13 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     position: "relative",
-    alignItems: "center",
   },
   infoBox: {
     marginTop: 16,
     padding: 16,
+    paddingLeft: 32,
     width: "100%",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   infoTitle: {
     fontSize: 18,

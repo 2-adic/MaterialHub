@@ -11,6 +11,7 @@ interface PhaseBoundary {
   strokeColor?: string;
   strokeWidth?: number;
   id: string; // Unique identifier for this boundary
+  snapEnabled?: boolean;
 }
 
 interface PhaseArea {
@@ -134,6 +135,7 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
         id: boundary.id,
         label: formatBoundaryLabel(boundary.id),
         points: boundary.points,
+        snapEnabled: boundary.snapEnabled,
       })),
     [boundaries]
   );
