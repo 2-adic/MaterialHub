@@ -18,6 +18,29 @@ import {
 } from "react-native-gesture-handler";
 import Marker, { MarkerProps } from "./Marker";
 
+interface SnapLinePoint {
+  x: number;
+  y: number;
+}
+
+interface SnapLine {
+  id?: string;
+  label?: string;
+  points: SnapLinePoint[];
+  snapDistance?: number;
+}
+
+interface SnappedBoundaryInfo {
+  id?: string;
+  label?: string;
+}
+
+interface BoundarySnapResult {
+  boundary: SnapLine;
+  x: number;
+  y: number;
+}
+
 interface ChartRenderProps {
   valueToScreenX: (value: number) => number;
   valueToScreenY: (value: number) => number;
@@ -44,6 +67,7 @@ interface ChartProps {
   width?: number;
   height?: number;
   markers?: MarkerProps[];
+  snapLines?: SnapLine[];
   children?: React.ReactNode | ((helpers: ChartRenderProps) => React.ReactNode);
   onTouchChange?: (coords: { x: number; y: number } | null) => void;
   infoBoxRenderer?: (
@@ -58,7 +82,10 @@ interface TouchInfo {
   displayX: string;
   displayY: string;
   snappedMarker?: MarkerProps;
+  snappedBoundary?: SnappedBoundaryInfo;
 }
+
+const DEFAULT_BOUNDARY_SNAP_DISTANCE = 12;
 
 const Chart: React.FC<ChartProps> = ({
   width = Dimensions.get("window").width - 40,
@@ -76,12 +103,14 @@ const Chart: React.FC<ChartProps> = ({
   touchValuePrecision = 3,
   touchValueThreshold = 0.001,
   markers = [],
+  snapLines = [],
   children,
   onTouchChange,
   infoBoxRenderer,
 }) => {
   const [touchInfo, setTouchInfo] = useState<TouchInfo | null>(null);
   const snappedMarkerRef = useRef<MarkerProps | null>(null);
+  const snappedBoundaryRef = useRef<SnapLine | null>(null);
 
   // Chart dimensions
   const padding = { top: 40, right: 40, bottom: 60, left: 70 };
@@ -216,6 +245,90 @@ const Chart: React.FC<ChartProps> = ({
       : null;
   };
 
+  const projectPointOntoSegment = (
+    px: number,
+    py: number,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number
+  ) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared === 0) {
+      return {
+        t: 0,
+        closestX: x1,
+        closestY: y1,
+        distance: Math.hypot(px - x1, py - y1),
+      };
+    }
+    let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+    t = clamp(t, 0, 1);
+    const closestX = x1 + t * dx;
+    const closestY = y1 + t * dy;
+    return {
+      t,
+      closestX,
+      closestY,
+      distance: Math.hypot(px - closestX, py - closestY),
+    };
+  };
+
+  const snapToBoundaries = (
+    touchX: number,
+    touchY: number
+  ): BoundarySnapResult | null => {
+    if (!snapLines || snapLines.length === 0) {
+      return null;
+    }
+
+    let nearest: BoundarySnapResult | null = null;
+    let minDistance = Infinity;
+
+    for (const line of snapLines) {
+      if (!line.points || line.points.length < 2) {
+        continue;
+      }
+
+      for (let i = 0; i < line.points.length - 1; i++) {
+        const start = line.points[i];
+        const end = line.points[i + 1];
+
+        const startX = valueToScreenX(start.x);
+        const startY = valueToScreenY(start.y);
+        const endX = valueToScreenX(end.x);
+        const endY = valueToScreenY(end.y);
+
+        const { distance, closestX, closestY } = projectPointOntoSegment(
+          touchX,
+          touchY,
+          startX,
+          startY,
+          endX,
+          endY
+        );
+
+        const snapDistance =
+          line.snapDistance ?? DEFAULT_BOUNDARY_SNAP_DISTANCE;
+
+        if (distance <= snapDistance && distance < minDistance) {
+          minDistance = distance;
+          const snappedX = screenXToValue(closestX);
+          const snappedY = screenYToValue(closestY);
+          nearest = {
+            boundary: line,
+            x: snappedX,
+            y: snappedY,
+          };
+        }
+      }
+    }
+
+    return nearest;
+  };
+
   // Handle touch gestures
   const panGesture = Gesture.Pan()
     .minDistance(0)
@@ -227,18 +340,34 @@ const Chart: React.FC<ChartProps> = ({
       const clampedX = clamp(x, padding.left, width - padding.right);
       const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-      // Check if touch should snap to a marker
-      const snapResult = snapToMarker(clampedX, clampedY);
+      // Check if touch should snap to a marker or boundary
+      const markerSnap = snapToMarker(clampedX, clampedY);
+      const boundarySnap = !markerSnap
+        ? snapToBoundaries(clampedX, clampedY)
+        : null;
 
-      const xValue = snapResult ? snapResult.x : screenXToValue(clampedX);
-      const yValue = snapResult ? snapResult.y : screenYToValue(clampedY);
+      const xValue = markerSnap
+        ? markerSnap.x
+        : boundarySnap
+        ? boundarySnap.x
+        : screenXToValue(clampedX);
+      const yValue = markerSnap
+        ? markerSnap.y
+        : boundarySnap
+        ? boundarySnap.y
+        : screenYToValue(clampedY);
 
-      // Trigger haptic feedback when snapping to a marker
-      if (snapResult) {
+      if (markerSnap) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        snappedMarkerRef.current = snapResult.marker;
+        snappedMarkerRef.current = markerSnap.marker;
+        snappedBoundaryRef.current = null;
+      } else if (boundarySnap) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        snappedMarkerRef.current = null;
+        snappedBoundaryRef.current = boundarySnap.boundary;
       } else {
         snappedMarkerRef.current = null;
+        snappedBoundaryRef.current = null;
       }
 
       setTouchInfo({
@@ -246,7 +375,13 @@ const Chart: React.FC<ChartProps> = ({
         y: yValue,
         displayX: formatTouchValue(xValue),
         displayY: formatTouchValue(yValue),
-        snappedMarker: snapResult ? snapResult.marker : undefined,
+        snappedMarker: markerSnap ? markerSnap.marker : undefined,
+        snappedBoundary: boundarySnap
+          ? {
+              id: boundarySnap.boundary.id,
+              label: boundarySnap.boundary.label,
+            }
+          : undefined,
       });
       if (onTouchChange) {
         onTouchChange({ x: xValue, y: yValue });
@@ -260,33 +395,71 @@ const Chart: React.FC<ChartProps> = ({
       const clampedX = clamp(x, padding.left, width - padding.right);
       const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-      // Check if touch should snap to a marker
-      const snapResult = snapToMarker(clampedX, clampedY);
+      // Check if touch should snap to a marker or boundary
+      const markerSnap = snapToMarker(clampedX, clampedY);
+      const boundarySnap = !markerSnap
+        ? snapToBoundaries(clampedX, clampedY)
+        : null;
 
-      const xValue = snapResult ? snapResult.x : screenXToValue(clampedX);
-      const yValue = snapResult ? snapResult.y : screenYToValue(clampedY);
+      const xValue = markerSnap
+        ? markerSnap.x
+        : boundarySnap
+        ? boundarySnap.x
+        : screenXToValue(clampedX);
+      const yValue = markerSnap
+        ? markerSnap.y
+        : boundarySnap
+        ? boundarySnap.y
+        : screenYToValue(clampedY);
 
-      // Trigger haptic feedback when transitioning to/from a marker
-      const wasSnapped = snappedMarkerRef.current !== null;
-      const isSnapped = snapResult !== null;
-      const changedMarker =
-        wasSnapped &&
-        isSnapped &&
-        snappedMarkerRef.current !== snapResult.marker;
+      // Trigger haptic feedback when transitioning to/from markers
+      const wasMarkerSnapped = snappedMarkerRef.current !== null;
+      const isMarkerSnapped = markerSnap !== null;
+      const markerChanged =
+        wasMarkerSnapped &&
+        isMarkerSnapped &&
+        snappedMarkerRef.current !== markerSnap?.marker;
 
-      if ((isSnapped && !wasSnapped) || changedMarker) {
-        // Snap to new marker or transition between markers
+      if ((isMarkerSnapped && !wasMarkerSnapped) || markerChanged) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
 
-      snappedMarkerRef.current = snapResult ? snapResult.marker : null;
+      // Trigger haptics for boundary snapping when no marker is active
+      const wasBoundarySnapped = snappedBoundaryRef.current !== null;
+      const isBoundarySnapped = !isMarkerSnapped && boundarySnap !== null;
+      const boundaryChanged =
+        wasBoundarySnapped &&
+        isBoundarySnapped &&
+        snappedBoundaryRef.current !== boundarySnap?.boundary;
+
+      if ((isBoundarySnapped && !wasBoundarySnapped) || boundaryChanged) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      if (isMarkerSnapped && markerSnap) {
+        snappedMarkerRef.current = markerSnap.marker;
+        snappedBoundaryRef.current = null;
+      } else if (isBoundarySnapped && boundarySnap) {
+        snappedMarkerRef.current = null;
+        snappedBoundaryRef.current = boundarySnap.boundary;
+      } else {
+        snappedMarkerRef.current = null;
+        snappedBoundaryRef.current = null;
+      }
 
       setTouchInfo({
         x: xValue,
         y: yValue,
         displayX: formatTouchValue(xValue),
         displayY: formatTouchValue(yValue),
-        snappedMarker: snapResult ? snapResult.marker : undefined,
+        snappedMarker: markerSnap ? markerSnap.marker : undefined,
+        snappedBoundary:
+          !markerSnap && boundarySnap
+            ? {
+                id: boundarySnap.boundary.id,
+                label: boundarySnap.boundary.label,
+              }
+            : undefined,
       });
       if (onTouchChange) {
         onTouchChange({ x: xValue, y: yValue });
@@ -294,6 +467,7 @@ const Chart: React.FC<ChartProps> = ({
     })
     .onEnd(() => {
       snappedMarkerRef.current = null;
+      snappedBoundaryRef.current = null;
       setTouchInfo(null);
       if (onTouchChange) {
         onTouchChange(null);

@@ -67,6 +67,14 @@ interface PhaseInfo {
   phase: string;
 }
 
+const formatBoundaryLabel = (id?: string) => {
+  if (!id) return undefined;
+  return id
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ↔ ");
+};
+
 const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
   width = Dimensions.get("window").width - 40,
   height = 400,
@@ -119,6 +127,16 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       return marker;
     });
   }, [markers]);
+
+  const boundarySnapLines = useMemo(
+    () =>
+      boundaries.map((boundary) => ({
+        id: boundary.id,
+        label: formatBoundaryLabel(boundary.id),
+        points: boundary.points,
+      })),
+    [boundaries]
+  );
 
   // Pressure formatter
   const formatPressure = (pressure: number) => {
@@ -397,6 +415,7 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       touchValuePrecision={touchValuePrecision}
       touchValueThreshold={touchValueThreshold}
       markers={markersWithDefaults}
+      snapLines={boundarySnapLines}
       onTouchChange={handleTouchChange}
       infoBoxRenderer={(info, labels) =>
         info ? (
@@ -404,6 +423,13 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
             {info.snappedMarker ? (
               <Text style={styles.infoTitle}>
                 {info.snappedMarker.label || "Marker"}
+              </Text>
+            ) : info.snappedBoundary ? (
+              <Text style={styles.infoTitle}>
+                Boundary:{" "}
+                {info.snappedBoundary.label ||
+                  info.snappedBoundary.id ||
+                  "Boundary"}
               </Text>
             ) : determinePhase ? (
               <Text style={styles.infoTitle}>
