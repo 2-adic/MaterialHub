@@ -15,6 +15,7 @@ import {
   getDependencyDescription,
 } from "../utils/propertyDependencies";
 import PhaseChangeChart from "../components/PhaseChangeChart";
+import { WaterPhaseChangeChart } from '../data/waterPhaseChangeChart';
 import { FavoritesContext } from "../context/FavoritesContext";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -341,7 +342,7 @@ export default function MaterialDetailScreen({ route }: Props) {
           <View key={category.title} style={styles.section}>
             <Text style={styles.sectionTitle}>Phase Diagram</Text>
             <View style={styles.chartContainer}>
-              <PhaseChangeChart />
+              <PhaseChangeChart {...WaterPhaseChangeChart} />
             </View>
           </View>
         );
