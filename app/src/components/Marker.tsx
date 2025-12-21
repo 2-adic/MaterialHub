@@ -20,6 +20,7 @@ export interface MarkerProps {
   tickMarkStrokeWidth?: number;
   tickMarkDashArray?: string;
   tickMarkLabelFontWeight?: "normal" | "bold";
+  description?: string | null;
 }
 
 const Marker: React.FC<MarkerProps> = ({

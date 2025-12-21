@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, Dimensions } from "react-native";
+import * as Haptics from "expo-haptics";
 import Svg, {
   Line,
   Circle,
@@ -56,6 +57,7 @@ interface TouchInfo {
   y: number;
   displayX: string;
   displayY: string;
+  snappedMarker?: MarkerProps;
 }
 
 const Chart: React.FC<ChartProps> = ({
@@ -79,6 +81,7 @@ const Chart: React.FC<ChartProps> = ({
   infoBoxRenderer,
 }) => {
   const [touchInfo, setTouchInfo] = useState<TouchInfo | null>(null);
+  const snappedMarkerRef = useRef<MarkerProps | null>(null);
 
   // Chart dimensions
   const padding = { top: 40, right: 40, bottom: 60, left: 70 };
@@ -180,6 +183,39 @@ const Chart: React.FC<ChartProps> = ({
     return value.toPrecision(touchValuePrecision);
   };
 
+  // Find nearest marker within snap distance and return its coordinates
+  const snapToMarker = (
+    touchX: number,
+    touchY: number
+  ): { marker: MarkerProps; x: number; y: number } | null => {
+    let nearestMarker: MarkerProps | null = null;
+    let minDistance = Infinity;
+
+    for (const marker of markers) {
+      const markerScreenX = valueToScreenX(marker.x);
+      const markerScreenY = valueToScreenY(marker.y);
+
+      // Calculate distance in screen space
+      const dx = touchX - markerScreenX;
+      const dy = touchY - markerScreenY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Calculate snap distance based on marker radius
+      // Formula: radius * 0.9 + 4 pixels (very tight snap range)
+      const markerRadius = marker.radius ?? 6;
+      const snapDistance = markerRadius * 0.9 + 4;
+
+      if (distance < snapDistance && distance < minDistance) {
+        minDistance = distance;
+        nearestMarker = marker;
+      }
+    }
+
+    return nearestMarker
+      ? { marker: nearestMarker, x: nearestMarker.x, y: nearestMarker.y }
+      : null;
+  };
+
   // Handle touch gestures
   const panGesture = Gesture.Pan()
     .minDistance(0)
@@ -191,14 +227,26 @@ const Chart: React.FC<ChartProps> = ({
       const clampedX = clamp(x, padding.left, width - padding.right);
       const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-      const xValue = screenXToValue(clampedX);
-      const yValue = screenYToValue(clampedY);
+      // Check if touch should snap to a marker
+      const snapResult = snapToMarker(clampedX, clampedY);
+
+      const xValue = snapResult ? snapResult.x : screenXToValue(clampedX);
+      const yValue = snapResult ? snapResult.y : screenYToValue(clampedY);
+
+      // Trigger haptic feedback when snapping to a marker
+      if (snapResult) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        snappedMarkerRef.current = snapResult.marker;
+      } else {
+        snappedMarkerRef.current = null;
+      }
 
       setTouchInfo({
         x: xValue,
         y: yValue,
         displayX: formatTouchValue(xValue),
         displayY: formatTouchValue(yValue),
+        snappedMarker: snapResult ? snapResult.marker : undefined,
       });
       if (onTouchChange) {
         onTouchChange({ x: xValue, y: yValue });
@@ -212,20 +260,40 @@ const Chart: React.FC<ChartProps> = ({
       const clampedX = clamp(x, padding.left, width - padding.right);
       const clampedY = clamp(y, padding.top, height - padding.bottom);
 
-      const xValue = screenXToValue(clampedX);
-      const yValue = screenYToValue(clampedY);
+      // Check if touch should snap to a marker
+      const snapResult = snapToMarker(clampedX, clampedY);
+
+      const xValue = snapResult ? snapResult.x : screenXToValue(clampedX);
+      const yValue = snapResult ? snapResult.y : screenYToValue(clampedY);
+
+      // Trigger haptic feedback when transitioning to/from a marker
+      const wasSnapped = snappedMarkerRef.current !== null;
+      const isSnapped = snapResult !== null;
+      const changedMarker =
+        wasSnapped &&
+        isSnapped &&
+        snappedMarkerRef.current !== snapResult.marker;
+
+      if ((isSnapped && !wasSnapped) || changedMarker) {
+        // Snap to new marker or transition between markers
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+
+      snappedMarkerRef.current = snapResult ? snapResult.marker : null;
 
       setTouchInfo({
         x: xValue,
         y: yValue,
         displayX: formatTouchValue(xValue),
         displayY: formatTouchValue(yValue),
+        snappedMarker: snapResult ? snapResult.marker : undefined,
       });
       if (onTouchChange) {
         onTouchChange({ x: xValue, y: yValue });
       }
     })
     .onEnd(() => {
+      snappedMarkerRef.current = null;
       setTouchInfo(null);
       if (onTouchChange) {
         onTouchChange(null);

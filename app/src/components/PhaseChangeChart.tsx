@@ -95,6 +95,31 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
     1e-10
   );
 
+  // Apply default descriptions to common markers if not specified
+  const markersWithDefaults = useMemo(() => {
+    if (!markers) return markers;
+    return markers.map((marker) => {
+      if (marker.description !== undefined) return marker;
+
+      if (marker.label === "Triple Point") {
+        return {
+          ...marker,
+          description: "Solid, liquid, and gas coexist in equilibrium.",
+        };
+      }
+
+      if (marker.label === "Critical Point") {
+        return {
+          ...marker,
+          description:
+            "At this point, liquid and gas become indistinguishable.",
+        };
+      }
+
+      return marker;
+    });
+  }, [markers]);
+
   // Pressure formatter
   const formatPressure = (pressure: number) => {
     if (pressure >= 1) {
@@ -371,12 +396,16 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
       yAxisLabel={yAxisLabel}
       touchValuePrecision={touchValuePrecision}
       touchValueThreshold={touchValueThreshold}
-      markers={markers}
+      markers={markersWithDefaults}
       onTouchChange={handleTouchChange}
       infoBoxRenderer={(info, labels) =>
         info ? (
           <>
-            {determinePhase ? (
+            {info.snappedMarker ? (
+              <Text style={styles.infoTitle}>
+                {info.snappedMarker.label || "Marker"}
+              </Text>
+            ) : determinePhase ? (
               <Text style={styles.infoTitle}>
                 Phase: {determinePhase(info.x, info.y)}
               </Text>
@@ -387,6 +416,11 @@ const PhaseChangeChart: React.FC<PhaseChangeChartProps> = ({
             <Text style={styles.infoText}>
               {labels.yAxisLabel}: {info.displayY}
             </Text>
+            {info.snappedMarker?.description && (
+              <Text style={styles.infoDescription}>
+                {info.snappedMarker.description}
+              </Text>
+            )}
           </>
         ) : (
           <>
@@ -455,6 +489,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#fff",
     marginTop: 4,
+  },
+  infoDescription: {
+    fontSize: 14,
+    color: "#ccc",
+    marginTop: 8,
+    fontStyle: "italic",
   },
   infoPlaceholder: {
     fontSize: 15,
