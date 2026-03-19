@@ -22,8 +22,11 @@ export const searchMaterials = (
     );
   }
 
-  // Apply weighted property filters
-  if (criteria.filters.length > 0) {
+  // Sort by name if no filters are applied
+  if (criteria.filters.length === 0) {
+    results.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    // Apply weighted property filters
     results = results.map((material) => {
       let score = 0;
       let totalWeight = 0;
