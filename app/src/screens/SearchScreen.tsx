@@ -23,6 +23,8 @@ export default function SearchScreen() {
   const [materialType, setMaterialType] = useState<string>("all");
   const [filters, setFilters] = useState<SearchFilter[]>([]);
   const [weightTexts, setWeightTexts] = useState<{ [key: number]: string }>({});
+  const [minTexts, setMinTexts] = useState<{ [key: number]: string }>({});
+  const [maxTexts, setMaxTexts] = useState<{ [key: number]: string }>({});
 
   const availableProperties: (keyof MaterialProperties)[] = [
     "atomicMass",
@@ -65,6 +67,8 @@ export default function SearchScreen() {
       },
     ]);
     setWeightTexts({ ...weightTexts, [newIndex]: "1" });
+    setMinTexts({ ...minTexts, [newIndex]: "" });
+    setMaxTexts({ ...maxTexts, [newIndex]: "" });
   };
 
   const removeFilter = (index: number) => {
@@ -72,16 +76,42 @@ export default function SearchScreen() {
     const newWeightTexts = { ...weightTexts };
     delete newWeightTexts[index];
     // Reindex remaining weights
-    const reindexed: { [key: number]: string } = {};
+    const reindexedWeights: { [key: number]: string } = {};
     Object.keys(newWeightTexts).forEach((key) => {
       const oldIndex = parseInt(key);
       if (oldIndex > index) {
-        reindexed[oldIndex - 1] = newWeightTexts[oldIndex];
+        reindexedWeights[oldIndex - 1] = newWeightTexts[oldIndex];
       } else {
-        reindexed[oldIndex] = newWeightTexts[oldIndex];
+        reindexedWeights[oldIndex] = newWeightTexts[oldIndex];
       }
     });
-    setWeightTexts(reindexed);
+    setWeightTexts(reindexedWeights);
+
+    const newMinTexts = { ...minTexts };
+    delete newMinTexts[index];
+    const reindexedMins: { [key: number]: string } = {};
+    Object.keys(newMinTexts).forEach((key) => {
+      const oldIndex = parseInt(key);
+      if (oldIndex > index) {
+        reindexedMins[oldIndex - 1] = newMinTexts[oldIndex];
+      } else {
+        reindexedMins[oldIndex] = newMinTexts[oldIndex];
+      }
+    });
+    setMinTexts(reindexedMins);
+
+    const newMaxTexts = { ...maxTexts };
+    delete newMaxTexts[index];
+    const reindexedMaxs: { [key: number]: string } = {};
+    Object.keys(newMaxTexts).forEach((key) => {
+      const oldIndex = parseInt(key);
+      if (oldIndex > index) {
+        reindexedMaxs[oldIndex - 1] = newMaxTexts[oldIndex];
+      } else {
+        reindexedMaxs[oldIndex] = newMaxTexts[oldIndex];
+      }
+    });
+    setMaxTexts(reindexedMaxs);
   };
 
   const updateFilter = (index: number, updates: Partial<SearchFilter>) => {
@@ -91,12 +121,19 @@ export default function SearchScreen() {
   };
 
   const handleSearch = () => {
+    // Parse min/max texts into numbers for the search criteria
+    const parsedFilters = filters.map((filter, index) => ({
+      ...filter,
+      min: minTexts[index] && minTexts[index].trim() !== "" ? parseFloat(minTexts[index]) : undefined,
+      max: maxTexts[index] && maxTexts[index].trim() !== "" ? parseFloat(maxTexts[index]) : undefined,
+    }));
+
     navigation.navigate("Results", {
       criteria: {
         searchText: searchText.trim(),
         materialType:
           materialType === "all" ? undefined : (materialType as any),
-        filters,
+        filters: parsedFilters,
       },
     });
   };
@@ -195,26 +232,22 @@ export default function SearchScreen() {
                     style={[styles.input, styles.rangeInputField]}
                     placeholder="Min"
                     placeholderTextColor="#666"
-                    keyboardType="numeric"
-                    value={filter.min?.toString() || ""}
-                    onChangeText={(text) =>
-                      updateFilter(index, {
-                        min: text ? parseFloat(text) : undefined,
-                      })
-                    }
+                    keyboardType="decimal-pad"
+                    value={minTexts[index] || ""}
+                    onChangeText={(text) => {
+                      setMinTexts({ ...minTexts, [index]: text });
+                    }}
                   />
                   <Text style={styles.rangeSeparator}>—</Text>
                   <TextInput
                     style={[styles.input, styles.rangeInputField]}
                     placeholder="Max"
                     placeholderTextColor="#666"
-                    keyboardType="numeric"
-                    value={filter.max?.toString() || ""}
-                    onChangeText={(text) =>
-                      updateFilter(index, {
-                        max: text ? parseFloat(text) : undefined,
-                      })
-                    }
+                    keyboardType="decimal-pad"
+                    value={maxTexts[index] || ""}
+                    onChangeText={(text) => {
+                      setMaxTexts({ ...maxTexts, [index]: text });
+                    }}
                   />
                 </View>
               </View>
