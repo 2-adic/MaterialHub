@@ -71,44 +71,54 @@ export const searchMaterials = (
       (m: any) => m.hasAllProperties && m.matchScore > 0
     );
 
-    // Sort by weighted combination of all filters
-    results.sort((a: any, b: any) => {
-      let scoreA = 0;
-      let scoreB = 0;
+    // Normalize each material to a weighted score based on sort direction and property spread,
+    // then rescale so the top material in the current result set is 100%.
+    const propertyStats = criteria.filters.map((filter) => {
+      const allValues = results
+        .map((m: any) => m.properties[filter.property])
+        .filter((v: any) => typeof v === "number");
+
+      const minVal = allValues.length > 0 ? Math.min(...allValues) : 0;
+      const maxVal = allValues.length > 0 ? Math.max(...allValues) : 0;
+      return {
+        filter,
+        minVal,
+        maxVal,
+        range: maxVal - minVal || 1,
+      };
+    });
+
+    const scoredResults = results.map((m: any) => {
+      let rankingScore = 0;
       let totalWeight = 0;
 
-      criteria.filters.forEach((filter) => {
-        const valueA = a.properties[filter.property];
-        const valueB = b.properties[filter.property];
+      propertyStats.forEach(({ filter, minVal, range }) => {
+        const value = m.properties[filter.property];
+        if (typeof value === "number") {
+          let normalized = (value - minVal) / range;
 
-        if (typeof valueA === "number" && typeof valueB === "number") {
-          // Normalize values to 0-1 scale based on min/max in results
-          const allValues = results
-            .map((m: any) => m.properties[filter.property])
-            .filter((v: any) => typeof v === "number");
-          const minVal = Math.min(...allValues);
-          const maxVal = Math.max(...allValues);
-          const range = maxVal - minVal || 1; // Avoid division by zero
-
-          let normalizedA = (valueA - minVal) / range;
-          let normalizedB = (valueB - minVal) / range;
-
-          // For ascending (low to high), lower values should score higher
-          // For descending (high to low), higher values should score higher
           if (filter.sortDirection === "asc") {
-            normalizedA = 1 - normalizedA;
-            normalizedB = 1 - normalizedB;
+            normalized = 1 - normalized;
           }
 
-          scoreA += normalizedA * filter.weight;
-          scoreB += normalizedB * filter.weight;
+          rankingScore += normalized * filter.weight;
           totalWeight += filter.weight;
         }
       });
 
-      // Higher score should come first
-      return totalWeight > 0 ? scoreB / totalWeight - scoreA / totalWeight : 0;
+      return {
+        material: m,
+        rankingScore: totalWeight > 0 ? rankingScore / totalWeight : 0,
+      };
     });
+
+    scoredResults.sort((a: any, b: any) => b.rankingScore - a.rankingScore);
+    const topScore = scoredResults[0]?.rankingScore || 0;
+
+    results = scoredResults.map((item: any) => ({
+      ...item.material,
+      matchScore: topScore > 0 ? item.rankingScore / topScore : 0,
+    }));
   }
 
   return results;
