@@ -22,90 +22,131 @@ export const searchMaterials = (
     );
   }
 
-  // Apply weighted property filters
-  if (criteria.filters.length > 0) {
-    results = results.map((material) => {
-      let score = 0;
-      let totalWeight = 0;
-      let hasAllProperties = true;
-
-      criteria.filters.forEach((filter) => {
-        const value = material.properties[filter.property];
-
-        // Check if material has this property
-        if (value === undefined || value === null) {
-          hasAllProperties = false;
-          return;
-        }
-
-        if (typeof value === "number") {
-          let matches = true;
-
-          if (filter.min !== undefined && value < filter.min) {
-            matches = false;
-          }
-          if (filter.max !== undefined && value > filter.max) {
-            matches = false;
-          }
-
-          if (matches) {
-            score += filter.weight;
-          }
-          totalWeight += filter.weight;
-        }
-      });
-
-      return {
-        ...material,
-        matchScore:
-          totalWeight > 0 && hasAllProperties ? score / totalWeight : 0,
-        hasAllProperties,
-      };
-    });
-
-    // Filter out materials that don't have all properties or have 0 score
-    results = results.filter(
-      (m: any) => m.hasAllProperties && m.matchScore > 0
+  // Sort by name if no filters are applied
+  if (criteria.filters.length === 0) {
+    results.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    // First, apply strict range filtering
+    const filtersWithRanges = criteria.filters.filter(
+      (filter) => filter.min !== undefined || filter.max !== undefined
     );
 
-    // Sort by weighted combination of all filters
-    results.sort((a: any, b: any) => {
-      let scoreA = 0;
-      let scoreB = 0;
-      let totalWeight = 0;
-
-      criteria.filters.forEach((filter) => {
-        const valueA = a.properties[filter.property];
-        const valueB = b.properties[filter.property];
-
-        if (typeof valueA === "number" && typeof valueB === "number") {
-          // Normalize values to 0-1 scale based on min/max in results
-          const allValues = results
-            .map((m: any) => m.properties[filter.property])
-            .filter((v: any) => typeof v === "number");
-          const minVal = Math.min(...allValues);
-          const maxVal = Math.max(...allValues);
-          const range = maxVal - minVal || 1; // Avoid division by zero
-
-          let normalizedA = (valueA - minVal) / range;
-          let normalizedB = (valueB - minVal) / range;
-
-          // For ascending (low to high), lower values should score higher
-          // For descending (high to low), higher values should score higher
-          if (filter.sortDirection === "asc") {
-            normalizedA = 1 - normalizedA;
-            normalizedB = 1 - normalizedB;
+    if (filtersWithRanges.length > 0) {
+      results = results.filter((material) => {
+        return filtersWithRanges.every((filter) => {
+          const value = material.properties[filter.property];
+          if (value === undefined || value === null || typeof value !== "number") {
+            return false; // Material doesn't have this property
           }
 
-          scoreA += normalizedA * filter.weight;
-          scoreB += normalizedB * filter.weight;
-          totalWeight += filter.weight;
-        }
+          if (filter.min !== undefined && value < filter.min) {
+            return false;
+          }
+          if (filter.max !== undefined && value > filter.max) {
+            return false;
+          }
+          return true;
+        });
+      });
+    }
+
+    // Then apply weighted property filters for ranking
+    if (results.length > 0) {
+      results = results.map((material) => {
+        let score = 0;
+        let totalWeight = 0;
+        let hasAllProperties = true;
+
+        criteria.filters.forEach((filter) => {
+          const value = material.properties[filter.property];
+
+          // Check if material has this property
+          if (value === undefined || value === null) {
+            hasAllProperties = false;
+            return;
+          }
+
+          if (typeof value === "number") {
+            let matches = true;
+
+            if (filter.min !== undefined && value < filter.min) {
+              matches = false;
+            }
+            if (filter.max !== undefined && value > filter.max) {
+              matches = false;
+            }
+
+            if (matches) {
+              score += filter.weight;
+            }
+            totalWeight += filter.weight;
+          }
+        });
+
+        return {
+          ...material,
+          matchScore:
+            totalWeight > 0 && hasAllProperties ? score / totalWeight : 0,
+          hasAllProperties,
+        };
       });
 
-      // Higher score should come first
-      return totalWeight > 0 ? scoreB / totalWeight - scoreA / totalWeight : 0;
-    });
+      // For ranking, keep materials that have some matching properties
+      results = results.filter(
+        (m: any) => m.matchScore > 0
+      );
+    }
+
+    // Normalize each material to a weighted score based on sort direction and property spread,
+    // then rescale so the top material in the current result set is 100%.
+    if (results.length > 0) {
+      const propertyStats = criteria.filters.map((filter) => {
+        const allValues = materials
+          .map((m) => m.properties[filter.property])
+          .filter((v) => typeof v === "number");
+
+        const minVal = allValues.length > 0 ? Math.min(...allValues) : 0;
+        const maxVal = allValues.length > 0 ? Math.max(...allValues) : 0;
+        return {
+          filter,
+          minVal,
+          maxVal,
+          range: maxVal - minVal || 1,
+        };
+      });
+
+      const scoredResults = results.map((m: any) => {
+        let rankingScore = 0;
+        let totalWeight = 0;
+
+        propertyStats.forEach(({ filter, minVal, range }) => {
+          const value = m.properties[filter.property];
+          if (typeof value === "number") {
+            let normalized = (value - minVal) / range;
+
+            if (filter.sortDirection === "asc") {
+              normalized = 1 - normalized;
+            }
+
+            rankingScore += normalized * filter.weight;
+            totalWeight += filter.weight;
+          }
+        });
+
+        return {
+          material: m,
+          rankingScore: totalWeight > 0 ? rankingScore / totalWeight : 0,
+        };
+      });
+
+      scoredResults.sort((a: any, b: any) => b.rankingScore - a.rankingScore);
+      const topScore = scoredResults[0]?.rankingScore || 0;
+
+      results = scoredResults.map((item: any) => ({
+        ...item.material,
+        matchScore: topScore > 0 ? item.rankingScore / topScore : 0,
+      }));
+    }
   }
 
   return results;
