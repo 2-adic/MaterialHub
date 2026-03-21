@@ -47,7 +47,7 @@ Browse an interactive periodic table. Tap an element to view basic properties; t
 
 ### Favorites:
 
-Favorite a material to access it quickly later.
+Favorite a material to access it quickly later. Users can add materials to their favorites by tapping the star icon on the material's detail page.
 
 <img height="500" alt="favorite-screen" src="https://github.com/user-attachments/assets/4850a61a-24fb-4b2c-b2bf-202316a3ac80" />
 
